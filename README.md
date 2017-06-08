@@ -1,8 +1,12 @@
 # RSMC-for-RA
 main.cpp contains the implementation of our idea that we have suggested
+
 segtree.cpp is just a helper file which contains implementation of segment tree with vector as it nodes
+
 'in' file contans the sample input main.cpp expects
+
 The input format is as follows : 
+
 // first line expects two integers num_p, num_var which represents number of programs and number of shared variables
 3//num_p 1//num_var
 // next line contains num_p intergers, each specifying number of events in the program 
