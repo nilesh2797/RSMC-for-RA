@@ -10,6 +10,8 @@ using namespace std;
 #define RF 1
 #define CO 2
 
+#define NOPRINT 0
+
 void linebreak()
 {
 	rep(i, 0, 100)
@@ -23,7 +25,7 @@ struct evnt
 	bool type;
 	ii parameter;
 	std::vector<std::vector<int> > suc, pre, maxw;
-	int var;
+	int var, value;
 
 	evnt(int num_p, int num_var, bool typ, int ind, int pind, int var1)
 	{
@@ -80,28 +82,36 @@ std::vector<std::vector<evnt> > trace;
 std::vector<vector<segTreeMax> > stMax;
 std::vector<vector<segTreeMin> > stMin;
 
-int num_p, num_var; // number of programs and number of variables
+int num_p, num_var = 0; // number of programs and number of variables
 
-void succhange(evnt &e, int var, int pid, const int &value)
+void succhange(evnt &e, int var, int pid, const int &value, bool PRINT = false)
 {
+	if(PRINT)
+		cout << "updating successors of (" << e.pid << ", " << e.eid << ")\n";
 	e.suc[var][pid] = value;
 	stMin[e.pid][var].modify(e.eid, e.suc[var]);
 }
 
-void prechange(evnt &e, int var, int pid, const int &value)
+void prechange(evnt &e, int var, int pid, const int &value, bool PRINT = false)
 {
+	if(PRINT)
+		cout << "updating predecessors of (" << e.pid << ", " << e.eid << ")\n";
 	e.pre[var][pid] = value;
 	stMax[e.pid][var].modify(e.eid, e.pre[var]);
 }
 
-void succhange(evnt &e, int var, const vi &value)
+void succhange(evnt &e, int var, const vi &value, bool PRINT = false)
 {
+	if(PRINT)
+		cout << "updating successors of (" << e.pid << ", " << e.eid << ")\n";
 	e.suc[var] = value;
 	stMin[e.pid][var].modify(e.eid, e.suc[var]);
 }
 
-void prechange(evnt &e, int var, const vi &value)
+void prechange(evnt &e, int var, const vi &value, bool PRINT = false)
 {
+	if(PRINT)
+		cout << "updating predecessors of (" << e.pid << ", " << e.eid << ")\n";
 	e.pre[var] = value;
 	stMax[e.pid][var].modify(e.eid, e.pre[var]);
 }
@@ -110,8 +120,8 @@ void update(evnt &e)
 {
 	rep(i, 0, e.suc.size())
 	{
-		prechange(e, i, stMax[e.pid][i].query(0, e.eid+1));
-		succhange(e, i, stMin[e.pid][i].query(e.eid, stMin[e.pid][i].n));
+		prechange(e, i, stMax[e.pid][i].query(0, e.eid+1), NOPRINT);
+		succhange(e, i, stMin[e.pid][i].query(e.eid, stMin[e.pid][i].n), NOPRINT);
 	}
 }
 
@@ -170,6 +180,7 @@ void addEdge(evnt &preve, evnt &e, int edgeType)
 		
 			// we can even skip this step since we add rf edge just after adding po edge so no need to update e
 			// update(e);
+			
 			// update predecessor of e wrt preve
 			prechange(e, 0, preve.pid, preve.eid);
 			rep(i, 0, num_var+1)
@@ -177,9 +188,7 @@ void addEdge(evnt &preve, evnt &e, int edgeType)
 				prechange(e, i, max(e.pre[i], preve.pre[i]));
 			}
 			//update successor of preve wrt e
-			succhange(preve, 0, e.pid, e.eid);
 			succhange(preve, 0, e.pid, min(preve.suc[0][e.pid], e.eid));
-			succhange(preve, var, e.pid, e.eid);
 			succhange(preve, var, e.pid, min(preve.suc[var][e.pid], e.eid));
 
 			// now update predecessors of preve about e
@@ -230,97 +239,102 @@ void addEdge(evnt &preve, evnt &e, int edgeType)
 	}
 }
 
-void listAllRf(const evnt &e)
+std::vector<ii> listAllRf(const evnt &e)
 {
+	std::vector<ii> toReturn;
 	int var = e.var;
-	cout << "these are possible parameters for the event : \n";
+	// cout << "these are possible parameters for the event : \n";
 	int count = 1;
 	rep(i, 0, num_p)
 	{
 		rep(j, max(-1, e.pre[var][i])+1, trace[i].size())
 		{
 			if(trace[i][j].type == WRITE and trace[i][j].var == var)
-				cout << count++ << ". (" << i << ", " << j << ")\n";
-		}
-	}
-	cout << "\n";
-}
-
-int main()
-{
-	int n = 0; //total number of events
-
-	// cout << "number of programs and number of variables\n";
-	cin >> num_p >> num_var;
-
-	trace.resize(num_p);
-	std::vector<int> exec(num_p, 0);
-	std::vector<int> num_events(num_p, 0);
-
-	for(int i = 0; i < num_p; ++i)
-	{
-		cin >> num_events[i];
-		n += num_events[i];
-	}
-
-	stMax.resize(num_p, std::vector<segTreeMax>(num_var+1));
-	stMin.resize(num_p, std::vector<segTreeMin>(num_var+1));
-
-	rep(i, 0, num_p)
-	{
-		rep(j, 0, num_var+1)
-		{
-			stMax[i][j].resize(num_p, num_events[i]);
-			stMin[i][j].resize(num_p, num_events[i]);
-		}
-	}
-	while(n--)
-	{
-		bool type;
-		int pid;
-		int var;
-
-		cin >> type >> pid >> var;
-
-		int eid = exec[pid]++;
-
-		evnt e(num_p, num_var, type, eid, pid, var);
-		trace[pid].pb(e);
-
-		if(e.eid > 0)
-			addEdge(trace[pid][e.eid-1], e, PO);
-		else
-		{
-			if(e.type == WRITE)
-				e.maxw[var][e.pid] = e.eid;
-		}
-
-		if(type == READ)
-		{
-			listAllRf(e);
-			int x, y;
-			cin >> x >> y;
-			vi maxw = e.maxw[var];
-			addEdge(trace[x][y], e, RF);
-			rep(i, 0, num_p)
 			{
-				if(maxw[i] != -INF and i != x)
-				{
-					addEdge(trace[i][maxw[i]], trace[x][y], CO);
-				}
-			}
-		}
-
-		// there might have some changes made to e, thus need to update these changes in trace also
-		trace[pid][exec[pid]-1] = e;
-	}
-	rep(i, 0, trace.size())
-	{
-		rep(j, 0, trace[i].size())
-		{
-			update(trace[i][j]);
-			trace[i][j].print();
-			linebreak();
+				// cout << count++ << ". (" << i << ", " << j << ")\n";
+				toReturn.pb(ii(i, j));
+			}	
 		}
 	}
+	// cout << "\n";
+	return toReturn;
 }
+
+// int main()
+// {
+// 	int n = 0; //total number of events
+
+// 	// cout << "number of programs and number of variables\n";
+// 	cin >> num_p >> num_var;
+
+// 	trace.resize(num_p);
+// 	std::vector<int> exec(num_p, 0);
+// 	std::vector<int> num_events(num_p, 0);
+
+// 	for(int i = 0; i < num_p; ++i)
+// 	{
+// 		cin >> num_events[i];
+// 		n += num_events[i];
+// 	}
+
+// 	stMax.resize(num_p, std::vector<segTreeMax>(num_var+1));
+// 	stMin.resize(num_p, std::vector<segTreeMin>(num_var+1));
+
+// 	rep(i, 0, num_p)
+// 	{
+// 		rep(j, 0, num_var+1)
+// 		{
+// 			stMax[i][j].resize(num_p, num_events[i]);
+// 			stMin[i][j].resize(num_p, num_events[i]);
+// 		}
+// 	}
+// 	while(n--)
+// 	{
+// 		bool type;
+// 		int pid;
+// 		int var;
+
+// 		cin >> type >> pid >> var;
+
+// 		int eid = exec[pid]++;
+
+// 		evnt e(num_p, num_var, type, eid, pid, var);
+// 		trace[pid].pb(e);
+
+// 		if(e.eid > 0)
+// 			addEdge(trace[pid][e.eid-1], e, PO);
+// 		else
+// 		{
+// 			if(e.type == WRITE)
+// 				e.maxw[var][e.pid] = e.eid;
+// 		}
+
+// 		if(type == READ)
+// 		{
+// 			listAllRf(e);
+// 			int x, y;
+// 			cin >> x >> y;
+// 			vi maxw = e.maxw[var];
+// 			addEdge(trace[x][y], e, RF);
+// 			rep(i, 0, num_p)
+// 			{
+// 				if(maxw[i] != -INF and i != x)
+// 				{
+// 					addEdge(trace[i][maxw[i]], trace[x][y], CO);
+// 				}
+// 			}
+// 		}
+
+// 		// there might have some changes made to e, thus need to update these changes in trace also
+// 		trace[pid][exec[pid]-1] = e;
+// 	}
+// 	rep(i, 0, trace.size())
+// 	{
+// 		rep(j, 0, trace[i].size())
+// 		{
+// 			update(trace[i][j]);
+// 			trace[i][j].print();
+// 			linebreak();
+// 		}
+// 	}
+// }
