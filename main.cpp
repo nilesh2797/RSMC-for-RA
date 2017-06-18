@@ -5,6 +5,7 @@ using namespace std;
 
 #define READ 0
 #define WRITE 1
+#define IFCOND 2
 
 #define PO 0
 #define RF 1
@@ -130,7 +131,9 @@ void addEdge(evnt &preve, evnt &e, int edgeType)
 	if(edgeType == PO)
 	{
 		// update vector clocks of preve
-		cout << "adding PO edge between (" << preve.pid << ", " << preve.eid << ") and (" << e.pid << ", " << e.eid << ")\n";
+		
+		//*****************************
+		// cout << "adding PO edge between (" << preve.pid << ", " << preve.eid << ") and (" << e.pid << ", " << e.eid << ")\n";
 		update(preve);
 		// copy vector clocks of preve into e
 		rep(i, 0, num_var+1)
@@ -161,7 +164,8 @@ void addEdge(evnt &preve, evnt &e, int edgeType)
 	{
 		if(edgeType == RF)
 		{
-			cout << "adding RF edge between (" << preve.pid << ", " << preve.eid << ") and (" << e.pid << ", " << e.eid << ")\n";
+			// **************************
+			// cout << "adding RF edge between (" << preve.pid << ", " << preve.eid << ") and (" << e.pid << ", " << e.eid << ")\n";
 
 			update(preve);
 			int var = preve.var;
@@ -206,7 +210,8 @@ void addEdge(evnt &preve, evnt &e, int edgeType)
 		}
 		else
 		{
-			cout << "adding CO edge between (" << preve.pid << ", " << preve.eid << ") and (" << e.pid << ", " << e.eid << ")\n";
+			//********************************
+			// cout << "adding CO edge between (" << preve.pid << ", " << preve.eid << ") and (" << e.pid << ", " << e.eid << ")\n";
 
 			update(preve);
 			update(e);

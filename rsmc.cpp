@@ -44,7 +44,9 @@ int main()
 
 			c.pid = i;
 			c.eid = j;
+			//Take input the type of the event, w/r/i 
 			cin >> ch;
+			//Take input the variable name
 			cin >> s;
 
 			if(!stoi[s])
@@ -62,9 +64,13 @@ int main()
 				cin >> value;
 				c.value = value;
 			}
-			else
+			else if(ch == 'r' or ch == 'R')
 			{
 				c.type = READ;
+			}
+			else if(ch == 'i' or ch == 'I')
+			{
+				
 			}
 
 			program[i].pb(c);
@@ -99,6 +105,7 @@ int main()
 		if(!writeCommands.empty())
 		{
 			Command c = writeCommands.top();
+			cout << "(" << c.pid << ", " << c.eid << ") ";
 			cout << "w " << itos[c.var] << " = " << c.value << endl;
 
 			writeCommands.pop();
@@ -144,10 +151,12 @@ int main()
 			std::vector<ii> param = listAllRf(e);
 
 			int x = param[0].X, y = param[0].Y;
-			cout << "r " << itos[e.var] << " = " << e.value << "(" << x << ", " << y << ")" << endl;
 			e.parameter.X = x;
 			e.parameter.Y = y;
 			e.value = trace[x][y].value;
+			cout << "(" << c.pid << ", " << c.eid << ") ";
+			cout << "r " << itos[e.var] << " = " << e.value << "(" << x << ", " << y << ")" << endl;
+			
 
 			vi maxw = e.maxw[var];
 			addEdge(trace[x][y], e, RF);
@@ -179,8 +188,8 @@ int main()
 		rep(j, 0, trace[i].size())
 		{
 			update(trace[i][j]);
-			trace[i][j].print();
-			linebreak();
+			// trace[i][j].print();
+			// linebreak();
 		}
 	}
 }
