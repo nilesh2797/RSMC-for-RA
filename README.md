@@ -13,8 +13,4 @@ segtree.cpp is just a helper file which contains implementation of segment tree 
 # Inpt/Output Format
 'in' file contans the sample input rsmc.cpp expects
 
-The input format is as follows : 
-
-first line expects integer specifying number of program threads num_p
-
-then next line expects array of integers (num_events[0...num_p)) which is number of events in each thread
+look at 'in' file to understand input format. The format is rather very intuitive and straightforward.
