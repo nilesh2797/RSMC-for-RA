@@ -131,8 +131,6 @@ void addEdge(evnt &preve, evnt &e, int edgeType)
 	if(edgeType == PO)
 	{
 		// update vector clocks of preve
-		
-		//*****************************
 		// cout << "adding PO edge between (" << preve.pid << ", " << preve.eid << ") and (" << e.pid << ", " << e.eid << ")\n";
 		update(preve);
 		// copy vector clocks of preve into e
@@ -164,7 +162,6 @@ void addEdge(evnt &preve, evnt &e, int edgeType)
 	{
 		if(edgeType == RF)
 		{
-			// **************************
 			// cout << "adding RF edge between (" << preve.pid << ", " << preve.eid << ") and (" << e.pid << ", " << e.eid << ")\n";
 
 			update(preve);
@@ -210,7 +207,6 @@ void addEdge(evnt &preve, evnt &e, int edgeType)
 		}
 		else
 		{
-			//********************************
 			// cout << "adding CO edge between (" << preve.pid << ", " << preve.eid << ") and (" << e.pid << ", " << e.eid << ")\n";
 
 			update(preve);
@@ -265,81 +261,23 @@ std::vector<ii> listAllRf(const evnt &e)
 	return toReturn;
 }
 
-// int main()
-// {
-// 	int n = 0; //total number of events
-
-// 	// cout << "number of programs and number of variables\n";
-// 	cin >> num_p >> num_var;
-
-// 	trace.resize(num_p);
-// 	std::vector<int> exec(num_p, 0);
-// 	std::vector<int> num_events(num_p, 0);
-
-// 	for(int i = 0; i < num_p; ++i)
-// 	{
-// 		cin >> num_events[i];
-// 		n += num_events[i];
-// 	}
-
-// 	stMax.resize(num_p, std::vector<segTreeMax>(num_var+1));
-// 	stMin.resize(num_p, std::vector<segTreeMin>(num_var+1));
-
-// 	rep(i, 0, num_p)
-// 	{
-// 		rep(j, 0, num_var+1)
-// 		{
-// 			stMax[i][j].resize(num_p, num_events[i]);
-// 			stMin[i][j].resize(num_p, num_events[i]);
-// 		}
-// 	}
-// 	while(n--)
-// 	{
-// 		bool type;
-// 		int pid;
-// 		int var;
-
-// 		cin >> type >> pid >> var;
-
-// 		int eid = exec[pid]++;
-
-// 		evnt e(num_p, num_var, type, eid, pid, var);
-// 		trace[pid].pb(e);
-
-// 		if(e.eid > 0)
-// 			addEdge(trace[pid][e.eid-1], e, PO);
-// 		else
-// 		{
-// 			if(e.type == WRITE)
-// 				e.maxw[var][e.pid] = e.eid;
-// 		}
-
-// 		if(type == READ)
-// 		{
-// 			listAllRf(e);
-// 			int x, y;
-// 			cin >> x >> y;
-// 			vi maxw = e.maxw[var];
-// 			addEdge(trace[x][y], e, RF);
-// 			rep(i, 0, num_p)
-// 			{
-// 				if(maxw[i] != -INF and i != x)
-// 				{
-// 					addEdge(trace[i][maxw[i]], trace[x][y], CO);
-// 				}
-// 			}
-// 		}
-
-// 		// there might have some changes made to e, thus need to update these changes in trace also
-// 		trace[pid][exec[pid]-1] = e;
-// 	}
-// 	rep(i, 0, trace.size())
-// 	{
-// 		rep(j, 0, trace[i].size())
-// 		{
-// 			update(trace[i][j]);
-// 			trace[i][j].print();
-// 			linebreak();
-// 		}
-// 	}
-// }
+std::vector<ii> listAllReads(const evnt &e)
+{
+	std::vector<ii> toReturn;
+	int var = e.var;
+	// cout << "these are possible parameters for the event : \n";
+	int count = 1;
+	rep(i, 0, num_p)
+	{
+		rep(j, max(-1, e.pre[var][i])+1, trace[i].size())
+		{
+			if(trace[i][j].type == READ and trace[i][j].var == var)
+			{
+				// cout << count++ << ". (" << i << ", " << j << ")\n";
+				toReturn.pb(ii(i, j));
+			}	
+		}
+	}
+	// cout << "\n";
+	return toReturn;
+}
