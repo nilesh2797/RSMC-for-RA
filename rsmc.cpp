@@ -21,7 +21,7 @@ std::map<string, int> stoi; // string to index
 std::vector<string> itos;
 std::stack<Command> readCommands, writeCommands;
 viiii commandExecuted;
-trie toBeExecuted;
+trie toBeExecuted, executed;
 
 int traceCount = 0;
 
@@ -52,6 +52,43 @@ void explore(int iter)
 			{
 				e.maxw[var][e.pid] = e.eid;
 			}
+
+			update(e);
+			vii conflicts = listAllReads(e);
+			rep(i, 0, conflicts.size())
+			{
+				ii cur = conflicts[i];
+				// can optimize this
+				viiii possible; 
+				int cutFromHere;
+				rep(j, 0, commandExecuted.size())
+				{
+					if(cur == commandExecuted[j].X)
+					{
+						cutFromHere = j;
+						break;
+					}
+					possible.pb(commandExecuted[j]);
+				}
+				rep(j, cutFromHere+1, commandExecuted.size())
+				{
+					iiii cmd = commandExecuted[j];
+					if(e.pre[0][cmd.X.X] >= cmd.X.Y)
+						possible.pb(commandExecuted[j]);
+				}
+				possible.pb(iiii(ii(e.pid, e.eid), ii(INF, INF)));
+				possible.pb(iiii(ii(cur.X, cur.Y), ii(e.pid, e.eid)));
+				if(!executed.find(possible))
+				{
+					toBeExecuted.add(possible);
+					executed.add(possible);
+					// rep(i, 0, possible.size())
+					// {
+					// 	cout << "((" << possible[i].X.X << ", " << possible[i].X.Y << ")(" << possible[i].Y.X << ", " << possible[i].Y.Y << "))\n";
+					// }
+					// cout << "reversed (" << e.pid << ", " << e.eid << ") and (" << cur.X << ", " << cur.Y << ")\n";
+				}
+ 			}
 
 			if(program[pid].size() > eid+1)
 			{
@@ -129,9 +166,10 @@ void explore(int iter)
 			commandExecuted.pb(iiii(ii(e.pid, e.eid), ii(e.parameter.X, e.parameter.Y)));
 		}
 	}
+	toBeExecuted.add(commandExecuted); // I know this looks weird but I think this is necessary, will fix later
 	toBeExecuted.remove(commandExecuted);
 
-	cout << "traceCount = " << ++traceCount << endl;
+	cout << "\ntraceCount = " << ++traceCount << endl;
 	cout << endl;
 	linebreak();
 	cout << endl;
