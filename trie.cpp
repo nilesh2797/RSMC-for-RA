@@ -22,7 +22,7 @@ bool trie::empty()
 	return cnt == 0 or head->num == 0;
 }
 
-void trie::add(const viiii &s, node* parent, int i)
+void trie::add(const vnt &s, node* parent, int i)
 {
 	if(i == s.size())
 	{
@@ -32,26 +32,33 @@ void trie::add(const viiii &s, node* parent, int i)
 	else
 	{
 		#ifdef DEBUG
-			cout << "adding s[" << i << "] = ((" << s[i].X.X << ", " << s[i].X.Y << ")(" << s[i].Y.X << ", " << s[i].Y.Y << "))\n";
+			s[i].print();
 		#endif
 		if(parent->child[s[i]] == NULL)
 		{
 			parent->child[s[i]] = new node;
 			parent->num++;
 		}
+		// cout << "parent->num = " << parent->num << endl;
 		add(s, parent->child[s[i]], i+1);
 		return;
 	}
 }
 
-void trie::add(const viiii &s)
+void trie::add(const vnt &s)
 {
+	#ifdef DEBUG
+	cout << "adding : \n";
+	#endif
 	add(s, head, 0);
+	#ifdef DEBUG
+	cout << endl;
+	#endif
 	cnt++;
 	return;
 }
 
-bool trie::find(const viiii &s, node* parent, int i)
+bool trie::find(const vnt &s, node* parent, int i)
 {
 	if(i == s.size() or parent == NULL)
 	{
@@ -66,12 +73,12 @@ bool trie::find(const viiii &s, node* parent, int i)
 	}
 }
 
-bool trie::find(const viiii &s)
+bool trie::find(const vnt &s)
 {
 	return find(s, head, 0);
 }
 
-bool trie::remove(const viiii &s, node* parent, int i)
+bool trie::remove(const vnt &s, node* parent, int i)
 {
 	if(i == s.size())
 	{
@@ -80,7 +87,7 @@ bool trie::remove(const viiii &s, node* parent, int i)
 	else
 	{
 		#ifdef DEBUG
-		cout << "removing s[" << i << "] = ((" << s[i].X.X << ", " << s[i].X.Y << ")(" << s[i].Y.X << ", " << s[i].Y.Y << "))\n";
+		s[i].print();
 		#endif
 
 		bool b = remove(s, parent->child[s[i]], i+1);
@@ -91,7 +98,8 @@ bool trie::remove(const viiii &s, node* parent, int i)
 
 			#ifdef DEBUG
 			if(parent->child[s[i]] == NULL)
-				cout << "removed s[" << i << "] = ((" << s[i].X.X << ", " << s[i].X.Y << ")(" << s[i].Y.X << ", " << s[i].Y.Y << "))\n";
+				cout << "remove : \n";
+				s[i].print();
 			#endif
 
 			if(--parent->num)
@@ -105,24 +113,30 @@ bool trie::remove(const viiii &s, node* parent, int i)
 	}
 }
 
-void trie::remove(const viiii &s)
+void trie::remove(const vnt &s)
 {
+	#ifdef DEBUG
+	cout << "removing : \n";
+	#endif
 	remove(s, head, 0);
+	#ifdef DEBUG
+	cout << endl;
+	#endif
 	cnt--;
 }
 
-void trie::getRun(viiii &s, node* parent)
+void trie::getRun(vnt &s, node* parent)
 {
 	// cout << "num = " << parent->num << endl;
 	if(parent != NULL and parent->num > 0)
 	{
 		node* next = NULL;
-		for(map<iiii, node*>::iterator it = parent->child.begin(); it != parent->child.end(); ++it)
+		for(map<nodeType, node*>::iterator it = parent->child.begin(); it != parent->child.end(); ++it)
 		{
 			if(it->second != NULL)
 			{
 				#ifdef DEBUG
-				cout << "found ((" << it->first.X.X << ", " << it->first.X.Y << ")(" << it->first.Y.X << ", " << it->first.Y.Y << "))\n";
+					(it->first).print();
 				#endif
 
 				s.push_back(it->first);
@@ -136,10 +150,16 @@ void trie::getRun(viiii &s, node* parent)
 	return;
 }
 
-viiii trie::getRun()
+vnt trie::getRun()
 {
-	viiii s;
+	vnt s;
+	#ifdef DEBUG
+	cout << "found : \n";
+	#endif
 	getRun(s, head);
+	#ifdef DEBUG
+	cout << endl;
+	#endif
 	return s;
 }
 
