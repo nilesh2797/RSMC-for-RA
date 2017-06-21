@@ -5,44 +5,142 @@
 struct Command
 {
 	int pid, eid;
-	bool type;
-	int var, value;
+	int type;
+	int var, value, trueGoto, falseGoto;
+	string localRegister;
 	Command()
 	{
 		type = -1;
 		var = value = 0;
+		trueGoto = falseGoto = INF;
 	}
 };
 
 std::vector<std::vector<Command> > program;
-std::vector<int> exec;
+std::vector<int> exec, pexec;
 int n = 0; //total number of events
 std::map<string, int> stoi; // string to index
-std::vector<string> itos;
-std::stack<Command> readCommands, writeCommands;
-viiii commandExecuted;
+std::vector<string> itos; // index to string
+std::stack<Command> readCommands, writeCommands, ifCommands, jumpCommands;
+vnt commandExecuted; // stores the executed command
 trie toBeExecuted, executed;
+std::vector<map<string, int> > registers;
 
 int traceCount = 0;
 
-void explore(int iter)
+void explore()
 {
-	#ifdef DEBUG
-	cout << "iter = " << iter << endl;
-	#endif
 
-	while(iter--)
+	while(true)
 	{
+		if(!jumpCommands.empty())
+		{
+			Command c = jumpCommands.top();
+			cout << "(" << c.pid << ", " << c.eid << ") jump " << c.trueGoto << endl;
+
+			jumpCommands.pop();
+			int pid = c.pid, eid = exec[pid]++;
+
+			evnt e(num_p, num_var, LOCAL, eid, pid, 0);
+			e.cmd = ii(c.pid, c.eid);
+			trace[pid].pb(e);
+
+			if(e.eid > 0)
+				addEdge(trace[pid][e.eid-1], e, PO);
+
+			Command c1 = program[pid][c.trueGoto];
+			if(c1.type == READ)
+				readCommands.push(c1);
+			else
+			{
+				if(c1.type == WRITE)
+					writeCommands.push(c1);
+				else
+				{
+					if(c1.type == IF)
+						ifCommands.push(c1);
+					else
+						jumpCommands.push(c1);
+				}
+			}
+
+			// there might have some changes made to e, thus need to update these changes in trace also
+			trace[pid][exec[pid]-1] = e;
+			commandExecuted.pb(nodeType(c.pid, c.eid, e.eid, e.parameter.X, e.parameter.Y));
+
+			continue;
+		}
+
+		if(!ifCommands.empty())
+		{
+			Command c = ifCommands.top();
+			cout << "(" << c.pid << ", " << c.eid << ") if " << c.localRegister  << "(" << registers[c.pid][c.localRegister] << ") == " << c.value << endl;
+
+			ifCommands.pop();
+			int pid = c.pid, eid = exec[pid]++;
+
+			evnt e(num_p, num_var, LOCAL, eid, pid, 0);
+			e.cmd = ii(c.pid, c.eid);
+			trace[pid].pb(e);
+
+			if(e.eid > 0)
+				addEdge(trace[pid][e.eid-1], e, PO);
+
+			if(c.value == registers[c.pid][c.localRegister])
+			{
+
+				Command c1 = program[pid][c.trueGoto];
+				if(c1.type == READ)
+					readCommands.push(c1);
+				else
+				{
+					if(c1.type == WRITE)
+						writeCommands.push(c1);
+					else
+					{
+						if(c1.type == IF)
+							ifCommands.push(c1);
+						else
+							jumpCommands.push(c1);
+					}
+				}
+			}
+			else
+			{
+				Command c1 = program[pid][c.falseGoto];
+				if(c1.type == READ)
+					readCommands.push(c1);
+				else
+				{
+					if(c1.type == WRITE)
+						writeCommands.push(c1);
+					else
+					{
+						if(c1.type == IF)
+							ifCommands.push(c1);
+						else
+							jumpCommands.push(c1);
+					}
+				}
+			}
+
+			// there might have some changes made to e, thus need to update these changes in trace also
+			trace[pid][exec[pid]-1] = e;
+			commandExecuted.pb(nodeType(c.pid, c.eid, e.eid, e.parameter.X, e.parameter.Y));
+
+			continue;
+		}
+
 		if(!writeCommands.empty())
 		{
 			Command c = writeCommands.top();
 			cout << "(" << c.pid << ", " << c.eid << ") w " << itos[c.var] << " = " << c.value << endl;
 
 			writeCommands.pop();
-			int pid = c.pid, eid = c.eid, var = c.var;
-			exec[pid]++;
+			int pid = c.pid, eid = exec[pid]++, var = c.var;
 
 			evnt e(num_p, num_var, c.type, eid, pid, var);
+			e.cmd = ii(c.pid, c.eid);
 			e.value = c.value;
 			trace[pid].pb(e);
 
@@ -59,11 +157,11 @@ void explore(int iter)
 			{
 				ii cur = conflicts[i];
 				// can optimize this
-				viiii possible; 
+				vnt possible; 
 				int cutFromHere;
 				rep(j, 0, commandExecuted.size())
 				{
-					if(cur == commandExecuted[j].X)
+					if(cur == ii(commandExecuted[j].pid, commandExecuted[j].teid))
 					{
 						cutFromHere = j;
 						break;
@@ -72,12 +170,12 @@ void explore(int iter)
 				}
 				rep(j, cutFromHere+1, commandExecuted.size())
 				{
-					iiii cmd = commandExecuted[j];
-					if(e.pre[0][cmd.X.X] >= cmd.X.Y)
+					nodeType cmd = commandExecuted[j];
+					if(e.pre[0][cmd.pid] >= cmd.teid)
 						possible.pb(commandExecuted[j]);
 				}
-				possible.pb(iiii(ii(e.pid, e.eid), ii(INF, INF)));
-				possible.pb(iiii(ii(cur.X, cur.Y), ii(e.pid, e.eid)));
+				possible.pb(nodeType(c.pid, c.eid, e.eid, INF, INF));
+				possible.pb(nodeType(cur.X, trace[cur.X][cur.Y].cmd.Y, cur.Y, e.pid, e.eid));
 				if(!executed.find(possible))
 				{
 					toBeExecuted.add(possible);
@@ -90,27 +188,39 @@ void explore(int iter)
 				}
  			}
 
-			if(program[pid].size() > eid+1)
-			{
-				Command c1 = program[pid][eid+1];
-				if(c1.type == WRITE)
-					writeCommands.push(c1);
-				else
-					readCommands.push(c1);
-			}
+ 			if(program[pid].size() > c.eid+1)
+ 			{
+ 				Command c1 = program[pid][c.eid+1];
+ 				if(c1.type == READ)
+ 					readCommands.push(c1);
+ 				else
+ 				{
+ 					if(c1.type == WRITE)
+ 						writeCommands.push(c1);
+ 					else
+ 					{
+ 						if(c1.type == IF)
+ 							ifCommands.push(c1);
+ 						else
+ 							jumpCommands.push(c1);
+ 					}
+ 				}
+ 			}
 
 			// there might have some changes made to e, thus need to update these changes in trace also
 			trace[pid][exec[pid]-1] = e;
-			commandExecuted.pb(iiii(ii(e.pid, e.eid), ii(e.parameter.X, e.parameter.Y)));
+			commandExecuted.pb(nodeType(c.pid, c.eid, e.eid, e.parameter.X, e.parameter.Y));
+			continue;
 		}
-		else
+
+		if(!readCommands.empty())
 		{
 			Command c = readCommands.top();
 			readCommands.pop();
-			int pid = c.pid, eid = c.eid, var = c.var;
-			exec[pid]++;
+			int pid = c.pid, eid = exec[pid]++, var = c.var;
 
 			evnt e(num_p, num_var, c.type, eid, pid, var);
+			e.cmd = ii(c.pid, c.eid);
 			trace[pid].pb(e);
 
 			if(e.eid > 0)
@@ -130,8 +240,8 @@ void explore(int iter)
 
 				rep(i, 0, param.size())
 				{
-					viiii possible = commandExecuted;
-					possible.pb(iiii(ii(e.pid, e.eid), ii(param[i].X, param[i].Y)));
+					vnt possible = commandExecuted;
+					possible.pb(nodeType(c.pid, c.eid, e.eid, param[i].X, param[i].Y));
 					toBeExecuted.add(possible);
 				}
 
@@ -150,23 +260,39 @@ void explore(int iter)
 				e.value = 0;
 			}
 
-			cout << "(" << c.pid << ", " << c.eid << ") r " << itos[e.var] << " = " << e.value << "(" << e.parameter.X << ", " << e.parameter.Y << ")" << endl;
+			cout << "(" << c.pid << ", " << c.eid << ") r " << itos[e.var] << " = " << e.value << "(" << trace[e.parameter.X][e.parameter.Y].cmd.X << ", " << trace[e.parameter.X][e.parameter.Y].cmd.Y << ")" << endl;
 
-			if(program[pid].size() > eid+1)
-			{
-				Command c1 = program[pid][eid+1];
-				if(c1.type == WRITE)
-					writeCommands.push(c1);
-				else
-					readCommands.push(c1);
-			}
+			registers[pid][c.localRegister] = e.value;
+
+			if(program[pid].size() > c.eid+1)
+ 			{
+ 				Command c1 = program[pid][c.eid+1];
+ 				if(c1.type == READ)
+ 					readCommands.push(c1);
+ 				else
+ 				{
+ 					if(c1.type == WRITE)
+ 						writeCommands.push(c1);
+ 					else
+ 					{
+ 						if(c1.type == IF)
+ 							ifCommands.push(c1);
+ 						else
+ 							jumpCommands.push(c1);
+ 					}
+ 				}
+ 			}
 
 			// there might have some changes made to e, thus need to update these changes in trace also
 			trace[pid][exec[pid]-1] = e;
-			commandExecuted.pb(iiii(ii(e.pid, e.eid), ii(e.parameter.X, e.parameter.Y)));
+			commandExecuted.pb(nodeType(c.pid, c.eid, e.eid, e.parameter.X, e.parameter.Y));
+			continue;
 		}
+
+		break;
 	}
-	toBeExecuted.add(commandExecuted); // I know this looks weird but I think this is necessary, will fix later
+
+	toBeExecuted.add(commandExecuted); // I know this looks weird but this is necessary, will fix later
 	toBeExecuted.remove(commandExecuted);
 
 	cout << "\ntraceCount = " << ++traceCount << endl;
@@ -175,20 +301,62 @@ void explore(int iter)
 	cout << endl;
 }
 
-void traverse(viiii toBeTraversed)
+void traverse(vnt toBeTraversed)
 {
 	rep(i, 0, toBeTraversed.size())
 	{
-		iiii cur = toBeTraversed[i];
-		Command c = program[cur.X.X][cur.X.Y];
+		nodeType cur = toBeTraversed[i];
+		Command c = program[cur.pid][cur.ceid];
+		pexec[cur.pid] = cur.ceid;
+
+		if(c.type == JUMP)
+		{
+			cout << "(" << c.pid << ", " << c.eid << ") jump " << c.trueGoto << endl;
+
+			int pid = c.pid, eid = exec[pid]++;
+
+			evnt e(num_p, num_var, LOCAL, eid, pid, 0);
+			e.cmd = ii(c.pid, c.eid);
+			trace[pid].pb(e);
+
+			if(e.eid > 0)
+				addEdge(trace[pid][e.eid-1], e, PO);
+
+			// there might have some changes made to e, thus need to update these changes in trace also
+			trace[pid][exec[pid]-1] = e;
+			commandExecuted.pb(nodeType(c.pid, c.eid, e.eid, e.parameter.X, e.parameter.Y));
+
+			continue;
+		}
+
+		if(c.type == IF)
+		{
+			cout << "(" << c.pid << ", " << c.eid << ") if " << c.localRegister  << "(" << registers[c.pid][c.localRegister] << ") == " << c.value << endl;
+
+			int pid = c.pid, eid = exec[pid]++;
+
+			evnt e(num_p, num_var, LOCAL, eid, pid, 0);
+			e.cmd = ii(c.pid, c.eid);
+			trace[pid].pb(e);
+
+			if(e.eid > 0)
+				addEdge(trace[pid][e.eid-1], e, PO);
+
+			// there might have some changes made to e, thus need to update these changes in trace also
+			trace[pid][exec[pid]-1] = e;
+			commandExecuted.pb(nodeType(c.pid, c.eid, e.eid, e.parameter.X, e.parameter.Y));
+
+			continue;
+		}
+
 		if(c.type == WRITE)
 		{
 			cout << "(" << c.pid << ", " << c.eid << ") w " << itos[c.var] << " = " << c.value << endl;
 
-			int pid = c.pid, eid = c.eid, var = c.var;
-			exec[pid]++;
+			int pid = c.pid, eid = exec[pid]++, var = c.var;
 
 			evnt e(num_p, num_var, c.type, eid, pid, var);
+			e.cmd = ii(c.pid, c.eid);
 			e.value = c.value;
 			trace[pid].pb(e);
 
@@ -201,20 +369,23 @@ void traverse(viiii toBeTraversed)
 
 			// there might have some changes made to e, thus need to update these changes in trace also
 			trace[pid][exec[pid]-1] = e;
-			commandExecuted.pb(iiii(ii(e.pid, e.eid), ii(e.parameter.X, e.parameter.Y)));
+			commandExecuted.pb(nodeType(c.pid, c.eid, e.eid, e.parameter.X, e.parameter.Y));
+
+			continue;
 		}
-		else
+		
+		if(c.type == READ)
 		{
-			int pid = c.pid, eid = c.eid, var = c.var;
-			exec[pid]++;
+			int pid = c.pid, eid = exec[pid]++, var = c.var;
 
 			evnt e(num_p, num_var, c.type, eid, pid, var);
+			e.cmd = ii(c.pid, c.eid);
 			trace[pid].pb(e);
 
 			if(e.eid > 0)
 				addEdge(trace[pid][e.eid-1], e, PO);
 
-			int x = cur.Y.X, y = cur.Y.Y;
+			int x = cur.ppid, y = cur.peid;
 			e.parameter.X = x;
 			e.parameter.Y = y;
 
@@ -238,11 +409,15 @@ void traverse(viiii toBeTraversed)
 				e.value = 0;
 			}
 
-			cout << "(" << c.pid << ", " << c.eid << ") r " << itos[e.var] << " = " << e.value << "(" << x << ", " << y << ")" << endl;
+			cout << "(" << c.pid << ", " << c.eid << ") r " << itos[e.var] << " = " << e.value << "(" << trace[x][y].cmd.X << ", " << trace[x][y].cmd.Y << ")" << endl;
+
+			registers[pid][c.localRegister] = e.value;
 
 			// there might have some changes made to e, thus need to update these changes in trace also
 			trace[pid][exec[pid]-1] = e;
-			commandExecuted.pb(iiii(ii(e.pid, e.eid), ii(e.parameter.X, e.parameter.Y)));
+			commandExecuted.pb(nodeType(c.pid, c.eid, e.eid, e.parameter.X, e.parameter.Y));
+
+			continue;
 		}
 	}
 }
@@ -272,26 +447,55 @@ int main()
 			c.pid = i;
 			c.eid = j;
 			cin >> ch;
-			cin >> s;
-
-			if(!stoi[s])
-			{
-				stoi[s] = ++num_var;
-				itos.pb(s);
-			}
-
-			c.var = stoi[s];
 
 			if(ch == 'w' or ch == 'W')
 			{
 				c.type = WRITE;
+				cin >> s;
+
+				if(!stoi[s])
+				{
+					stoi[s] = ++num_var;
+					itos.pb(s);
+				}
+
+				c.var = stoi[s];
+
 				int value;
 				cin >> value;
 				c.value = value;
 			}
 			else
 			{
-				c.type = READ;
+				if(ch == 'r' or ch == 'R')
+				{
+					c.type = READ;
+					cin >> s;
+
+					if(!stoi[s])
+					{
+						stoi[s] = ++num_var;
+						itos.pb(s);
+					}
+
+					c.var = stoi[s];
+
+					cin >> c.localRegister;
+				}
+				else
+				{
+					if(ch == 'j' or ch == 'J')
+					{
+						c.type = JUMP;
+						cin >> c.trueGoto;
+					}
+					else
+					{
+						c.type = IF;
+						cin >> c.localRegister;
+						cin >> c.value >> c.trueGoto >> c.falseGoto;
+					}
+				}
 			}
 
 			program[i].pb(c);
@@ -302,6 +506,8 @@ int main()
 	trace.resize(num_p);
 	exec.clear();
 	exec.resize(num_p, 0);
+	registers.clear();
+	registers.resize(num_p);
 
 	stMax.clear();
 	stMax.resize(num_p, std::vector<segTreeMax>(num_var+1));
@@ -319,6 +525,8 @@ int main()
 
 	readCommands = stack<Command>();
 	writeCommands = stack<Command>();
+	ifCommands = stack<Command>();
+	jumpCommands = stack<Command>();
 	commandExecuted.clear();
 
 	rep(i, 0, num_p)
@@ -326,19 +534,35 @@ int main()
 		if(program[i][0].type == READ)
 			readCommands.push(program[i][0]);
 		else
-			writeCommands.push(program[i][0]);
+		{
+			if(program[i][0].type == WRITE)
+				writeCommands.push(program[i][0]);
+			else
+			{
+				if(program[i][0].type == IF)
+					ifCommands.push(program[i][0]);
+				else
+				{
+					jumpCommands.push(program[i][0]);
+				}
+			}
+		}
 	}
 
 	// genearting a random run
-	explore(n);
+	explore();
 
 	while(!toBeExecuted.empty())
 	{
 		// clear out things
 		trace.clear();
 		trace.resize(num_p);
+		pexec.clear();
+		pexec.resize(num_p, -1);
 		exec.clear();
 		exec.resize(num_p, 0);
+		registers.clear();
+		registers.resize(num_p);
 
 		stMax.clear();
 		stMax.resize(num_p, std::vector<segTreeMax>(num_var+1));
@@ -356,9 +580,11 @@ int main()
 
 		readCommands = stack<Command>();
 		writeCommands = stack<Command>();
+		ifCommands = stack<Command>();
 		commandExecuted.clear();
 
-		viiii toBeTraversed = toBeExecuted.getRun();
+		vnt toBeTraversed = toBeExecuted.getRun();
+		// cout << "toBeTraversed = \n"; 
 		// rep(i, 0, toBeTraversed.size())
 		// {
 		// 	cout << "((" << toBeTraversed[i].X.X << ", " << toBeTraversed[i].X.Y << ")(" << toBeTraversed[i].Y.X << ", " << toBeTraversed[i].Y.Y << "))\n";
@@ -368,18 +594,28 @@ int main()
 		rep(i, 0, num_p)
 		{
 			// cout << "exec[" << i << "] = " << exec[i] << endl;
-			if(exec[i] < num_events[i])
+			if(pexec[i]+1 < num_events[i])
 			{
-				if(program[i][exec[i]].type == READ)
-					readCommands.push(program[i][exec[i]]);
+				if(program[i][pexec[i]+1].type == READ)
+					readCommands.push(program[i][pexec[i]+1]);
 				else
-					writeCommands.push(program[i][exec[i]]);
+				{
+					if(program[i][pexec[i]+1].type == WRITE)
+						writeCommands.push(program[i][pexec[i]+1]);
+					else
+					{
+						if(program[i][pexec[i]+1].type == JUMP)
+							jumpCommands.push(program[i][pexec[i]+1]);
+						else
+							ifCommands.push(program[i][pexec[i]+1]);
+					}
+				}
 			}
 		}
 
-		explore(n - toBeTraversed.size());
-		if(traceCount > 500)
-			break;
+		explore();
+		// if(traceCount > 500)
+		// 	break;
 	}
 	
 

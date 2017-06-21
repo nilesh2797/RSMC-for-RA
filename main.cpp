@@ -5,6 +5,9 @@ using namespace std;
 
 #define READ 0
 #define WRITE 1
+#define IF 2
+#define JUMP 3
+#define LOCAL 4
 
 #define PO 0
 #define RF 1
@@ -22,10 +25,11 @@ void linebreak()
 struct evnt
 {
 	int eid, pid;
-	bool type;
+	int type;
 	ii parameter;
 	std::vector<std::vector<int> > suc, pre, maxw;
 	int var, value;
+	ii cmd;
 
 	evnt(int num_p, int num_var, bool typ, int ind, int pind, int var1)
 	{
@@ -151,7 +155,7 @@ void addEdge(evnt &preve, evnt &e, int edgeType)
 			}
 			e.maxw[e.var][e.pid] = e.eid;
 		}
-		// now updating successor of e
+		// now updating successor of preve
 
 		succhange(preve, 0, preve.pid, e.eid);
 		succhange(preve, e.var, preve.pid, e.eid);
