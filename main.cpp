@@ -13,6 +13,8 @@ using namespace std;
 
 #define NOPRINT 0
 
+map<int,vector<bool> > variable_initialised;
+
 void linebreak()
 {
 	rep(i, 0, 100)
@@ -243,19 +245,47 @@ void addEdge(evnt &preve, evnt &e, int edgeType)
 std::vector<ii> listAllRf(const evnt &e)
 {
 	std::vector<ii> toReturn;
+
+	bool initial_value=1;
+	//If the predecessors in all threads for this variable are at initial value, we can still read the initial value for this variable.
+	//////tododododododododo
+	rep(i,0,num_p)
+	{
+		// cout<<"f";
+		//If the event has a finite predecessor in thread i
+		if(e.maxw[e.var][i]>=0)
+		{
+			// cout<<"Thread "<<i<<" has a predecessor for event"<<e.pid<<e.eid;
+			initial_value=0;
+			break;
+		}
+	}
+	if (initial_value)
+	{
+		toReturn.pb(ii(-1,-1));
+	}
+
+	// if(variable_initialised[e.var][e.pid]==0)
+	// {
+	// 	toReturn.pb(ii(-1,-1));
+	// }
 	int var = e.var;
-	// cout << "these are possible parameters for the event : \n";
+	//cout << "these are possible parameters for the event : \n";
 	int count = 1;
 	rep(i, 0, num_p)
 	{
+		
 		rep(j, max(-1, e.pre[var][i])+1, trace[i].size())
 		{
 			if(trace[i][j].type == WRITE and trace[i][j].var == var)
 			{
+				
 				// cout << count++ << ". (" << i << ", " << j << ")\n";
 				toReturn.pb(ii(i, j));
 			}	
 		}
+		// if(write_exist==0 && e.maxw[var][i]<0)
+		// 	toReturn.pb(ii(i,-1));
 	}
 	// cout << "\n";
 	return toReturn;

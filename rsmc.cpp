@@ -23,6 +23,7 @@ std::stack<Command> readCommands, writeCommands;
 viiii commandExecuted;
 trie toBeExecuted, executed;
 
+
 int traceCount = 0;
 
 void explore(int iter)
@@ -37,7 +38,10 @@ void explore(int iter)
 		{
 			Command c = writeCommands.top();
 			cout << "(" << c.pid << ", " << c.eid << ") w " << itos[c.var] << " = " << c.value << endl;
+			//Write event is being committed in these lines
 
+			//Variable is initialised in this thread, so initial value can no longer be taken now
+			variable_initialised[c.var][c.pid]=1;
 			writeCommands.pop();
 			int pid = c.pid, eid = c.eid, var = c.var;
 			exec[pid]++;
@@ -45,6 +49,7 @@ void explore(int iter)
 			evnt e(num_p, num_var, c.type, eid, pid, var);
 			e.value = c.value;
 			trace[pid].pb(e);
+			
 
 			if(e.eid > 0)
 				addEdge(trace[pid][e.eid-1], e, PO);
@@ -123,25 +128,41 @@ void explore(int iter)
 				int x = param[0].X, y = param[0].Y;
 				e.parameter.X = x;
 				e.parameter.Y = y;
-				e.value = trace[x][y].value;
-
-				vi maxw = e.maxw[var];
-				addEdge(trace[x][y], e, RF);
-
-				rep(i, 0, param.size())
+				if(y==-1)
 				{
-					viiii possible = commandExecuted;
-					possible.pb(iiii(ii(e.pid, e.eid), ii(param[i].X, param[i].Y)));
-					toBeExecuted.add(possible);
-				}
-
-				rep(i, 0, num_p)
-				{
-					if(maxw[i] != -INF and i != x)
+					// cout<<"taking the initial value";
+					e.value = 0 ; 
+					rep(i, 1, param.size())
 					{
-						addEdge(trace[i][maxw[i]], trace[x][y], CO);
-					}
+						viiii possible = commandExecuted;
+						possible.pb(iiii(ii(e.pid, e.eid), ii(param[i].X, param[i].Y)));
+						toBeExecuted.add(possible);
+					}	
 				}
+				else
+				{
+					e.value = trace[x][y].value;
+				
+
+					vi maxw = e.maxw[var];
+					addEdge(trace[x][y], e, RF);
+
+					rep(i, 0, param.size())
+					{
+						viiii possible = commandExecuted;
+						possible.pb(iiii(ii(e.pid, e.eid), ii(param[i].X, param[i].Y)));
+						toBeExecuted.add(possible);
+					}
+
+					rep(i, 0, num_p)
+					{
+						if(maxw[i] != -INF and i != x)
+						{
+							addEdge(trace[i][maxw[i]], trace[x][y], CO);
+						}
+					}
+				}	
+				
 			}
 			else
 			{
@@ -170,6 +191,7 @@ void explore(int iter)
 	toBeExecuted.remove(commandExecuted);
 
 	cout << "\ntraceCount = " << ++traceCount << endl;
+	// ++traceCount;
 	cout << endl;
 	linebreak();
 	cout << endl;
@@ -278,7 +300,9 @@ int main()
 
 			if(!stoi[s])
 			{
+
 				stoi[s] = ++num_var;
+				variable_initialised[num_var].resize(num_p,0);
 				itos.pb(s);
 			}
 
@@ -303,6 +327,8 @@ int main()
 			program[i].pb(c);
 		}
 	}
+
+	// variable_initialised.resize(num_var);
 
 	trace.clear();
 	trace.resize(num_p);
@@ -335,8 +361,7 @@ int main()
 			writeCommands.push(program[i][0]);
 	}
 
-	// genearting a random run
-
+	// generating a random run
 	explore(n);
 
 
@@ -387,7 +412,7 @@ int main()
 		}
 
 		explore(n - toBeTraversed.size());
-		if(traceCount > 500)
+		if(traceCount > 5000000000)
 			break;
 
 	}
@@ -397,9 +422,12 @@ int main()
 	// {
 	// 	rep(j, 0, trace[i].size())
 	// 	{
-	// 		update(trace[i][j]);
+	// 		// update(trace[i][j]);
 	// 		trace[i][j].print();
 	// 		linebreak();
 	// 	}
 	// }
+
+	
+	// cout<<traceCount;
 }
