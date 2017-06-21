@@ -8,6 +8,8 @@ typedef std::vector<ll> vl;
 typedef std::vector<std::vector<int> > vvi;
 typedef std::pair<int, int> ii;
 typedef std::vector<ii> vii;
+typedef std::pair<ii,ii> iiii;
+typedef std::vector<iiii> viiii;
 
 #define pb push_back
 #define mset(a, b) memset(a, b, sizeof a)

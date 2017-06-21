@@ -1,11 +1,14 @@
-
 2
-
-2 2
-
+8 4
 w x 1
-w y 1
-
-r y
-r x
-
+r x r1
+i r1 2 3 5
+w x 4
+j 6
+r x r1
+w x 5
+w x 6
+w x 2
+r x r2
+w x 11
+r x r2 

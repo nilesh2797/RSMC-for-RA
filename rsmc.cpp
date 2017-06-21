@@ -245,8 +245,8 @@ void explore()
 					e.value = 0 ; 
 					rep(i, 1, param.size())
 					{
-						viiii possible = commandExecuted;
-						possible.pb(iiii(ii(e.pid, e.eid), ii(param[i].X, param[i].Y)));
+						vnt possible = commandExecuted;
+						possible.pb(nodeType(c.pid, c.eid, e.eid, param[i].X, param[i].Y));
 						toBeExecuted.add(possible);
 					}	
 
@@ -261,8 +261,8 @@ void explore()
 
 					rep(i, 0, param.size())
 					{
-						viiii possible = commandExecuted;
-						possible.pb(iiii(ii(e.pid, e.eid), ii(param[i].X, param[i].Y)));
+						vnt possible = commandExecuted;
+						possible.pb(nodeType(c.pid, c.eid, e.eid, param[i].X, param[i].Y));
 						toBeExecuted.add(possible);
 					}
 

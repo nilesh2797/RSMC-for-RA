@@ -1,16 +1,5 @@
 2
-<<<<<<< HEAD
-
-2 2
-
-w x 1
-r y
-
-w y 1
-r x
-=======
 8 4
-
 w x 1
 r x r1
 i r1 2 3 5
@@ -19,9 +8,8 @@ j 6
 r x r1
 w x 5
 w x 6
->>>>>>> 101bfc4fb5843903726a53b8d6b652bd8d742b8b
 
 w x 2
 r x r2
 w x 11
-r x r2
+r x r2 
