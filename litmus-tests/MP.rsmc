@@ -5,5 +5,5 @@
 w x 1
 w y 1
 
-r y
-r x
+r y r1
+r x r2
