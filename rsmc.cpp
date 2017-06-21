@@ -8,11 +8,13 @@ struct Command
 	int type;
 	int var, value, trueGoto, falseGoto;
 	string localRegister;
+	// std::string operation;
 	Command()
 	{
 		type = -1;
 		var = value = 0;
 		trueGoto = falseGoto = INF;
+		// operation = "";
 	}
 };
 
@@ -220,6 +222,7 @@ void explore()
 
 		if(!readCommands.empty())
 		{
+			// cout<<"Dsdsds";
 			Command c = readCommands.top();
 			readCommands.pop();
 			int pid = c.pid, eid = exec[pid]++, var = c.var;
@@ -232,12 +235,15 @@ void explore()
 				addEdge(trace[pid][e.eid-1], e, PO);
 
 			std::vector<ii> param = listAllRf(e);
+			// std::vector<ii> param;
 
 			if(param.size())
 			{
 				int x = param[0].X, y = param[0].Y;
 				e.parameter.X = x;
 				e.parameter.Y = y;
+
+				//This implies that initial value can be read and there are other choices also
 				if(y==-1)
 				{
 
@@ -249,7 +255,7 @@ void explore()
 						possible.pb(nodeType(c.pid, c.eid, e.eid, param[i].X, param[i].Y));
 						toBeExecuted.add(possible);
 					}	
-
+					cout << "(" << c.pid << ", " << c.eid << ") r " << itos[e.var] << " = " << e.value << "(-1, -1)" << endl;
 				}
 				else
 				{
@@ -273,6 +279,7 @@ void explore()
 							addEdge(trace[i][maxw[i]], trace[x][y], CO);
 						}
 					}
+					cout << "(" << c.pid << ", " << c.eid << ") r " << itos[e.var] << " = " << e.value << "(" << trace[e.parameter.X][e.parameter.Y].cmd.X << ", " << trace[e.parameter.X][e.parameter.Y].cmd.Y << ")" << endl;
 				}	
 				
 			}
@@ -281,9 +288,10 @@ void explore()
 				e.parameter.X = -1;
 				e.parameter.Y = -1;
 				e.value = 0;
+				cout << "(" << c.pid << ", " << c.eid << ") r " << itos[e.var] << " = " << e.value << "(-1, -1)" << endl;
 			}
 
-			cout << "(" << c.pid << ", " << c.eid << ") r " << itos[e.var] << " = " << e.value << "(" << trace[e.parameter.X][e.parameter.Y].cmd.X << ", " << trace[e.parameter.X][e.parameter.Y].cmd.Y << ")" << endl;
+			
 
 			registers[pid][c.localRegister] = e.value;
 
@@ -427,13 +435,15 @@ void traverse(vnt toBeTraversed)
 						addEdge(trace[i][maxw[i]], trace[x][y], CO);
 					}
 				}
+				cout << "(" << c.pid << ", " << c.eid << ") r " << itos[e.var] << " = " << e.value << "(" << trace[x][y].cmd.X << ", " << trace[x][y].cmd.Y << ")" << endl;
 			}
 			else
 			{
 				e.value = 0;
+				cout << "(" << c.pid << ", " << c.eid << ") r " << itos[e.var] << " = " << e.value << "(-1, -1)" <<endl;
 			}
 
-			cout << "(" << c.pid << ", " << c.eid << ") r " << itos[e.var] << " = " << e.value << "(" << trace[x][y].cmd.X << ", " << trace[x][y].cmd.Y << ")" << endl;
+			
 
 			registers[pid][c.localRegister] = e.value;
 
@@ -539,6 +549,8 @@ int main()
 	stMax.resize(num_p, std::vector<segTreeMax>(num_var+1));
 	stMin.clear();
 	stMin.resize(num_p, std::vector<segTreeMin>(num_var+1));
+
+
 
 	rep(i, 0, num_p)
 	{
