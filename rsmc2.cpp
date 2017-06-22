@@ -2,12 +2,14 @@
 #include "main.cpp"
 #include "trie.cpp"
 
+std::vector<map<string, int> > registers;
+
 struct Command
 {
 	int pid, eid;
 	int type;
 	int var, value, trueGoto, falseGoto;
-	string localRegister;
+	string localRegister, operand1, operand2, operation; // these are required for local arithmetic commands
 	string operation_arc;
 	Command()
 	{
@@ -16,17 +18,57 @@ struct Command
 		trueGoto = falseGoto = INF;
 		operation_arc = "";
 	}
-};
 
-std::vector<std::vector<Command> > program;
-std::vector<int> exec, pexec;
-int n = 0; //total number of events
-std::map<string, int> vartoi; // string to index
-std::vector<string> itos; // index to string
-std::stack<Command> readCommands, writeCommands, ifCommands, jumpCommands;
-vnt commandExecuted; // stores the executed command
-trie toBeExecuted, executed;
-std::vector<map<string, int> > registers;
+	int op1()
+	{
+		if(operand1.size() == 0)
+			return 0;
+		else
+		{
+			if(isdigit(operand1[0]))
+				return atoi(operand1.c_str());
+			else
+				return registers[pid][operand1];
+		}
+	}
+
+	int op2()
+	{
+		if(operand2.size() == 0)
+			return 0;
+		else
+		{
+			if(isdigit(operand2[0]))
+				return atoi(operand2.c_str());
+			else
+				return registers[pid][operand2];
+		}
+	}
+
+	int getResult()
+	{
+		if(operation == "+")
+			return op1() + op2();
+		if(operation == "*")
+			return op1() * op2();
+		if(operation == "-")
+			return op1() - op2();
+		if(operation == "/")
+			return op1() / op2();
+		if(operation == "==")
+			return op1() == op2();
+		if(operation == "<")
+			return op1() < op2();
+		if(operation == ">")
+			return op1() > op2();
+		if(operation == "xor")
+			return op1() ^ op2();
+		if(operation == "=")
+			return op1();
+	}
+
+
+};
 
 //Returns the tail of a string
 std::string tail(std::string const& source, size_t const length) {
@@ -53,6 +95,16 @@ int operand_value(Command c, int initial_value)
 	}	
 }
 
+
+std::vector<std::vector<Command> > program;
+std::vector<int> exec, pexec;
+int n = 0; //total number of events
+std::map<string, int> vartoi; // string to index
+std::vector<string> itos; // index to string
+std::stack<Command> readCommands, writeCommands, localCommands;
+vnt commandExecuted; // stores the executed command
+trie toBeExecuted, executed;
+
 int traceCount = 0;
 
 void explore()
@@ -60,61 +112,23 @@ void explore()
 
 	while(true)
 	{
-		if(!jumpCommands.empty())
+		if(!localCommands.empty())
 		{
-			Command c = jumpCommands.top();
-			cout << "(" << c.pid << ", " << c.eid << ") jump " << c.trueGoto << endl;
+			Command c = localCommands.top();
+			localCommands.pop();
 
-			jumpCommands.pop();
-			int pid = c.pid, eid = exec[pid]++;
-
-			evnt e(num_p, num_var, LOCAL, eid, pid, 0);
-			e.cmd = ii(c.pid, c.eid);
-			trace[pid].pb(e);
-
-			if(e.eid > 0)
-				addEdge(trace[pid][e.eid-1], e, PO);
-
-			Command c1 = program[pid][c.trueGoto];
-			if(c1.type == READ)
-				readCommands.push(c1);
-			else
+			if(c.operation == "jump")
 			{
-				if(c1.type == WRITE)
-					writeCommands.push(c1);
-				else
-				{
-					if(c1.type == IF)
-						ifCommands.push(c1);
-					else
-						jumpCommands.push(c1);
-				}
-			}
+				cout << "(" << c.pid << ", " << c.eid << ") jump " << c.trueGoto << endl;
 
-			// there might have some changes made to e, thus need to update these changes in trace also
-			trace[pid][exec[pid]-1] = e;
-			commandExecuted.pb(nodeType(c.pid, c.eid, e.eid, e.parameter.X, e.parameter.Y));
+				int pid = c.pid, eid = exec[pid]++;
 
-			continue;
-		}
+				evnt e(num_p, num_var, LOCAL, eid, pid, 0);
+				e.cmd = ii(c.pid, c.eid);
+				trace[pid].pb(e);
 
-		if(!ifCommands.empty())
-		{
-			Command c = ifCommands.top();
-			cout << "(" << c.pid << ", " << c.eid << ") if " << c.localRegister  << "(" << registers[c.pid][c.localRegister] << ") == " << c.value << endl;
-
-			ifCommands.pop();
-			int pid = c.pid, eid = exec[pid]++;
-
-			evnt e(num_p, num_var, LOCAL, eid, pid, 0);
-			e.cmd = ii(c.pid, c.eid);
-			trace[pid].pb(e);
-
-			if(e.eid > 0)
-				addEdge(trace[pid][e.eid-1], e, PO);
-
-			if(c.value == registers[c.pid][c.localRegister])
-			{
+				if(e.eid > 0)
+					addEdge(trace[pid][e.eid-1], e, PO);
 
 				Command c1 = program[pid][c.trueGoto];
 				if(c1.type == READ)
@@ -125,54 +139,120 @@ void explore()
 						writeCommands.push(c1);
 					else
 					{
-						if(c1.type == IF)
-							ifCommands.push(c1);
-						else
-							jumpCommands.push(c1);
+						if(c1.type == LOCAL)
+							localCommands.push(c1);
 					}
 				}
+
+				// there might have some changes made to e, thus need to update these changes in trace also
+				trace[pid][exec[pid]-1] = e;
+				commandExecuted.pb(nodeType(c.pid, c.eid, e.eid, e.parameter.X, e.parameter.Y));
+				continue;
 			}
-			else
+			if(c.operation == "if")
 			{
-				Command c1 = program[pid][c.falseGoto];
-				if(c1.type == READ)
-					readCommands.push(c1);
-				else
+				cout << "(" << c.pid << ", " << c.eid << ") if " << c.localRegister  << "(" << registers[c.pid][c.localRegister] << ") == " << c.value << endl;
+
+				int pid = c.pid, eid = exec[pid]++;
+
+				evnt e(num_p, num_var, LOCAL, eid, pid, 0);
+				e.cmd = ii(c.pid, c.eid);
+				trace[pid].pb(e);
+
+				if(e.eid > 0)
+					addEdge(trace[pid][e.eid-1], e, PO);
+
+				if(c.value == registers[c.pid][c.localRegister])
 				{
-					if(c1.type == WRITE)
-						writeCommands.push(c1);
+
+					Command c1 = program[pid][c.trueGoto];
+					if(c1.type == READ)
+						readCommands.push(c1);
 					else
 					{
-						if(c1.type == IF)
-							ifCommands.push(c1);
+						if(c1.type == WRITE)
+							writeCommands.push(c1);
 						else
-							jumpCommands.push(c1);
+						{
+							if(c1.type == LOCAL)
+								localCommands.push(c1);
+						}
 					}
 				}
+				else
+				{
+					Command c1 = program[pid][c.falseGoto];
+					if(c1.type == READ)
+						readCommands.push(c1);
+					else
+					{
+						if(c1.type == WRITE)
+							writeCommands.push(c1);
+						else
+						{
+							if(c1.type == LOCAL)
+								localCommands.push(c1);
+						}
+					}
+				}
+
+				// there might have some changes made to e, thus need to update these changes in trace also
+				trace[pid][exec[pid]-1] = e;
+				commandExecuted.pb(nodeType(c.pid, c.eid, e.eid, e.parameter.X, e.parameter.Y));
+
+				continue;
 			}
+
+			cout << "(" << c.pid << ", " << c.eid << ") " << c.localRegister << " = " << c.operand1  << " " << c.operation << " " << c.operand2 << endl;
+
+			int pid = c.pid, eid = exec[pid]++;
+
+			evnt e(num_p, num_var, LOCAL, eid, pid, 0);
+			e.cmd = ii(c.pid, c.eid);
+			trace[pid].pb(e);
+
+			registers[pid][c.localRegister] = c.getResult();
+
+			if(e.eid > 0)
+				addEdge(trace[pid][e.eid-1], e, PO);
+
+			if(program[pid].size() > c.eid+1)
+ 			{
+ 				Command c1 = program[pid][c.eid+1];
+ 				if(c1.type == READ)
+ 					readCommands.push(c1);
+ 				else
+ 				{
+ 					if(c1.type == WRITE)
+ 						writeCommands.push(c1);
+ 					else
+ 					{
+ 						if(c1.type == LOCAL)
+ 							localCommands.push(c1);
+ 					}
+ 				}
+ 			}
 
 			// there might have some changes made to e, thus need to update these changes in trace also
 			trace[pid][exec[pid]-1] = e;
 			commandExecuted.pb(nodeType(c.pid, c.eid, e.eid, e.parameter.X, e.parameter.Y));
-
 			continue;
+
 		}
 
 		if(!writeCommands.empty())
 		{
 			Command c = writeCommands.top();
-			cout << "(" << c.pid << ", " << c.eid << ") w " << itos[c.var] << " = " << c.value << endl;
 			//Write event is being committed in these lines
-
+			cout << "(" << c.pid << ", " << c.eid << ") w " << itos[c.var] << " = " << c.operand1 << endl;
 
 			writeCommands.pop();
 			int pid = c.pid, eid = exec[pid]++, var = c.var;
 
 			evnt e(num_p, num_var, c.type, eid, pid, var);
 			e.cmd = ii(c.pid, c.eid);
-			e.value = c.value;
+			e.value = c.op1();
 			trace[pid].pb(e);
-			
 
 			if(e.eid > 0)
 				addEdge(trace[pid][e.eid-1], e, PO);
@@ -214,7 +294,7 @@ void explore()
 					// {
 					// 	cout << "((" << possible[i].X.X << ", " << possible[i].X.Y << ")(" << possible[i].Y.X << ", " << possible[i].Y.Y << "))\n";
 					// }
-					// cout << "reversed (" << e.pid << ", " << e.eid << ") and (" << cur.X << ", " << cur.Y << ")\n";
+					cout << "reversed (" << e.pid << ", " << e.eid << ") and (" << cur.X << ", " << cur.Y << ")\n";
 				}
  			}
 
@@ -229,10 +309,8 @@ void explore()
  						writeCommands.push(c1);
  					else
  					{
- 						if(c1.type == IF)
- 							ifCommands.push(c1);
- 						else
- 							jumpCommands.push(c1);
+ 						if(c1.type == LOCAL)
+ 							localCommands.push(c1);
  					}
  				}
  			}
@@ -299,7 +377,7 @@ void explore()
 					}
 					cout << "(" << c.pid << ", " << c.eid << ") r " << itos[e.var] << " = " << e.value << "(" << trace[e.parameter.X][e.parameter.Y].cmd.X << ", " << trace[e.parameter.X][e.parameter.Y].cmd.Y << ")" << endl;
 				}	
-				
+
 			}
 			else
 			{
@@ -324,10 +402,8 @@ void explore()
  						writeCommands.push(c1);
  					else
  					{
- 						if(c1.type == IF)
- 							ifCommands.push(c1);
- 						else
- 							jumpCommands.push(c1);
+ 						if(c1.type == LOCAL)
+ 							localCommands.push(c1);
  					}
  				}
  			}
@@ -358,9 +434,47 @@ void traverse(vnt toBeTraversed)
 		Command c = program[cur.pid][cur.ceid];
 		pexec[cur.pid] = cur.ceid;
 
-		if(c.type == JUMP)
+		if(c.type == LOCAL)
 		{
-			cout << "(" << c.pid << ", " << c.eid << ") jump " << c.trueGoto << endl;
+			if(c.operation == "jump")
+			{
+				cout << "(" << c.pid << ", " << c.eid << ") jump " << c.trueGoto << endl;
+
+				int pid = c.pid, eid = exec[pid]++;
+
+				evnt e(num_p, num_var, LOCAL, eid, pid, 0);
+				e.cmd = ii(c.pid, c.eid);
+				trace[pid].pb(e);
+
+				if(e.eid > 0)
+					addEdge(trace[pid][e.eid-1], e, PO);
+
+				// there might have some changes made to e, thus need to update these changes in trace also
+				trace[pid][exec[pid]-1] = e;
+				commandExecuted.pb(nodeType(c.pid, c.eid, e.eid, e.parameter.X, e.parameter.Y));
+				continue;
+			}
+			if(c.operation == "if")
+			{
+				cout << "(" << c.pid << ", " << c.eid << ") if " << c.localRegister  << "(" << registers[c.pid][c.localRegister] << ") == " << c.value << endl;
+
+				int pid = c.pid, eid = exec[pid]++;
+
+				evnt e(num_p, num_var, LOCAL, eid, pid, 0);
+				e.cmd = ii(c.pid, c.eid);
+				trace[pid].pb(e);
+
+				if(e.eid > 0)
+					addEdge(trace[pid][e.eid-1], e, PO);
+
+				// there might have some changes made to e, thus need to update these changes in trace also
+				trace[pid][exec[pid]-1] = e;
+				commandExecuted.pb(nodeType(c.pid, c.eid, e.eid, e.parameter.X, e.parameter.Y));
+
+				continue;
+			}
+
+			cout << "(" << c.pid << ", " << c.eid << ") " << c.localRegister << " = " << c.operand1  << " " << c.operation << " " << c.operand2 << endl;
 
 			int pid = c.pid, eid = exec[pid]++;
 
@@ -368,25 +482,7 @@ void traverse(vnt toBeTraversed)
 			e.cmd = ii(c.pid, c.eid);
 			trace[pid].pb(e);
 
-			if(e.eid > 0)
-				addEdge(trace[pid][e.eid-1], e, PO);
-
-			// there might have some changes made to e, thus need to update these changes in trace also
-			trace[pid][exec[pid]-1] = e;
-			commandExecuted.pb(nodeType(c.pid, c.eid, e.eid, e.parameter.X, e.parameter.Y));
-
-			continue;
-		}
-
-		if(c.type == IF)
-		{
-			cout << "(" << c.pid << ", " << c.eid << ") if " << c.localRegister  << "(" << registers[c.pid][c.localRegister] << ") == " << c.value << endl;
-
-			int pid = c.pid, eid = exec[pid]++;
-
-			evnt e(num_p, num_var, LOCAL, eid, pid, 0);
-			e.cmd = ii(c.pid, c.eid);
-			trace[pid].pb(e);
+			registers[pid][c.localRegister] = c.getResult();
 
 			if(e.eid > 0)
 				addEdge(trace[pid][e.eid-1], e, PO);
@@ -394,19 +490,18 @@ void traverse(vnt toBeTraversed)
 			// there might have some changes made to e, thus need to update these changes in trace also
 			trace[pid][exec[pid]-1] = e;
 			commandExecuted.pb(nodeType(c.pid, c.eid, e.eid, e.parameter.X, e.parameter.Y));
-
 			continue;
 		}
 
 		if(c.type == WRITE)
 		{
-			cout << "(" << c.pid << ", " << c.eid << ") w " << itos[c.var] << " = " << c.value << endl;
+			cout << "(" << c.pid << ", " << c.eid << ") w " << itos[c.var] << " = " << c.operand1 << endl;
 
 			int pid = c.pid, eid = exec[pid]++, var = c.var;
 
 			evnt e(num_p, num_var, c.type, eid, pid, var);
 			e.cmd = ii(c.pid, c.eid);
-			e.value = c.value;
+			e.value = c.op1();
 			trace[pid].pb(e);
 
 			if(e.eid > 0)
@@ -512,9 +607,7 @@ int main()
 
 				c.var = vartoi[s];
 
-				int value;
-				cin >> value;
-				c.value = value;
+				cin >> c.operand1;
 			}
 			else
 			{
@@ -557,16 +650,26 @@ int main()
 				}
 				else
 				{
-					if(ch == 'j' or ch == 'J')
+					if(ch == 'l' or ch == 'L')
 					{
-						c.type = JUMP;
-						cin >> c.trueGoto;
-					}
-					else
-					{
-						c.type = IF;
-						cin >> c.localRegister;
-						cin >> c.value >> c.trueGoto >> c.falseGoto;
+						c.type = LOCAL;
+						cin >> c.operation;
+						if(c.operation == "jump")
+							cin >> c.trueGoto;
+						else
+						{
+							if(c.operation == "if")
+							{
+								cin >> c.localRegister >> c.value >> c.trueGoto >> c.falseGoto;
+							}
+							else
+							{
+								if(c.operation == "=")
+									cin >> c.localRegister >> c.operand1;
+								else
+									cin >> c.localRegister >> c.operand1 >> c.operand2;
+							}
+						}
 					}
 				}
 			}
@@ -598,8 +701,7 @@ int main()
 
 	readCommands = stack<Command>();
 	writeCommands = stack<Command>();
-	ifCommands = stack<Command>();
-	jumpCommands = stack<Command>();
+	localCommands = stack<Command>();
 	commandExecuted.clear();
 
 	rep(i, 0, num_p)
@@ -612,12 +714,8 @@ int main()
 				writeCommands.push(program[i][0]);
 			else
 			{
-				if(program[i][0].type == IF)
-					ifCommands.push(program[i][0]);
-				else
-				{
-					jumpCommands.push(program[i][0]);
-				}
+				if(program[i][0].type == LOCAL)
+					localCommands.push(program[i][0]);
 			}
 		}
 	}
@@ -653,7 +751,7 @@ int main()
 
 		readCommands = stack<Command>();
 		writeCommands = stack<Command>();
-		ifCommands = stack<Command>();
+		localCommands = stack<Command>();
 		commandExecuted.clear();
 
 		vnt toBeTraversed = toBeExecuted.getRun();
@@ -677,10 +775,8 @@ int main()
 						writeCommands.push(program[i][pexec[i]+1]);
 					else
 					{
-						if(program[i][pexec[i]+1].type == JUMP)
-							jumpCommands.push(program[i][pexec[i]+1]);
-						else
-							ifCommands.push(program[i][pexec[i]+1]);
+						if(program[i][pexec[i]+1].type == LOCAL)
+							localCommands.push(program[i][pexec[i]+1]);
 					}
 				}
 			}
@@ -689,20 +785,5 @@ int main()
 		explore();
 		// if(traceCount > 500)
 		// 	break;
-
 	}
-	
-
-	// rep(i, 0, trace.size())
-	// {
-	// 	rep(j, 0, trace[i].size())
-	// 	{
-	// 		// update(trace[i][j]);
-	// 		trace[i][j].print();
-	// 		linebreak();
-	// 	}
-	// }
-
-	
-	// cout<<traceCount;
 }
