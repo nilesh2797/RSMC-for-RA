@@ -8,26 +8,50 @@ struct Command
 	int type;
 	int var, value, trueGoto, falseGoto;
 	string localRegister;
-	// std::string operation;
+	string operation;
 	Command()
 	{
 		type = -1;
 		var = value = 0;
 		trueGoto = falseGoto = INF;
-		// operation = "";
+		operation = "";
 	}
 };
 
 std::vector<std::vector<Command> > program;
 std::vector<int> exec, pexec;
 int n = 0; //total number of events
-std::map<string, int> stoi; // string to index
+std::map<string, int> vartoi; // string to index
 std::vector<string> itos; // index to string
 std::stack<Command> readCommands, writeCommands, ifCommands, jumpCommands;
 vnt commandExecuted; // stores the executed command
 trie toBeExecuted, executed;
 std::vector<map<string, int> > registers;
 
+//Returns the tail of a string
+std::string tail(std::string const& source, size_t const length) {
+  if (length >= source.size()) { return source; }
+  return source.substr(source.size() - length);
+} // tail
+
+int operand_value(Command c, int initial_value)
+{
+	if(c.operation.empty())
+		return initial_value;
+	else
+	{
+		if(c.operation[0]=='+')
+			return initial_value+stoi(c.operation.substr(1));
+		else if(c.operation[0]=='-')
+			return initial_value-stoi(c.operation.substr(1));
+		else if(c.operation[0]=='*')
+			return initial_value*stoi(c.operation.substr(1));
+		else if(c.operation[0]=='/')
+			return initial_value/stoi(c.operation.substr(1));
+		else
+			return initial_value;
+	}	
+}
 
 int traceCount = 0;
 
@@ -141,7 +165,7 @@ void explore()
 			//Write event is being committed in these lines
 
 			//Variable is initialised in this thread, so initial value can no longer be taken now
-			variable_initialised[c.var][c.pid]=1;
+			
 			writeCommands.pop();
 			int pid = c.pid, eid = exec[pid]++, var = c.var;
 
@@ -246,9 +270,7 @@ void explore()
 				//This implies that initial value can be read and there are other choices also
 				if(y==-1)
 				{
-
-					// cout<<"taking the initial value";
-					e.value = 0 ; 
+					e.value=operand_value(c,0);
 					rep(i, 1, param.size())
 					{
 						vnt possible = commandExecuted;
@@ -259,8 +281,7 @@ void explore()
 				}
 				else
 				{
-					e.value = trace[x][y].value;
-				
+					e.value = operand_value(c,trace[x][y].value);
 
 					vi maxw = e.maxw[var];
 					addEdge(trace[x][y], e, RF);
@@ -287,7 +308,7 @@ void explore()
 			{
 				e.parameter.X = -1;
 				e.parameter.Y = -1;
-				e.value = 0;
+				e.value=operand_value(c,0);
 				cout << "(" << c.pid << ", " << c.eid << ") r " << itos[e.var] << " = " << e.value << "(-1, -1)" << endl;
 			}
 
@@ -423,7 +444,7 @@ void traverse(vnt toBeTraversed)
 
 			if(x > -1 and y > -1)
 			{
-				e.value = trace[x][y].value;
+				e.value=operand_value(c,trace[x][y].value);
 
 				vi maxw = e.maxw[var];
 				addEdge(trace[x][y], e, RF);
@@ -439,7 +460,7 @@ void traverse(vnt toBeTraversed)
 			}
 			else
 			{
-				e.value = 0;
+				e.value=operand_value(c,0);
 				cout << "(" << c.pid << ", " << c.eid << ") r " << itos[e.var] << " = " << e.value << "(-1, -1)" <<endl;
 			}
 
@@ -487,13 +508,13 @@ int main()
 				c.type = WRITE;
 				cin >> s;
 
-				if(!stoi[s])
+				if(!vartoi[s])
 				{
-					stoi[s] = ++num_var;
+					vartoi[s] = ++num_var;
 					itos.pb(s);
 				}
 
-				c.var = stoi[s];
+				c.var = vartoi[s];
 
 				int value;
 				cin >> value;
@@ -504,15 +525,37 @@ int main()
 				if(ch == 'r' or ch == 'R')
 				{
 					c.type = READ;
+					//Take input the variable name/operation
 					cin >> s;
-
-					if(!stoi[s])
+					bool operator_found=true;
+					std::size_t found = s.find('+');
+  					if (found==std::string::npos)
+  					{
+  						found = s.find('-');
+  						if(found==std::string::npos)
+  						{
+  							found = s.find('*');
+  							if(found==std::string::npos)
+  							{
+  								found = s.find('/');
+  								if(found==std::string::npos)
+  									operator_found=false;
+  							}
+  						}
+  					}
+  					if(operator_found==true)
+  					{////Execute only if there is an operator in the expression
+  						c.operation=s;
+  						s=s.substr(0,found);
+  						c.operation=c.operation.substr(found);
+  					}
+					if(!vartoi[s])
 					{
-						stoi[s] = ++num_var;
+						vartoi[s] = ++num_var;
 						itos.pb(s);
 					}
 
-					c.var = stoi[s];
+					c.var = vartoi[s];
 
 					cin >> c.localRegister;
 				}

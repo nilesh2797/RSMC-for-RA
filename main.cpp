@@ -15,7 +15,7 @@ using namespace std;
 
 #define NOPRINT 0
 
-map<int,vector<bool> > variable_initialised;
+// map<int,vector<bool> > variable_initialised;
 
 void linebreak()
 {
