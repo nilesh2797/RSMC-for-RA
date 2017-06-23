@@ -104,6 +104,7 @@ std::vector<string> itos; // index to string
 std::stack<Command> readCommands, writeCommands, localCommands;
 vnt commandExecuted; // stores the executed command
 trie toBeExecuted, executed;
+std::map<pair<string, int>, int> conditions;
 
 int traceCount = 0;
 
@@ -420,6 +421,19 @@ void explore()
 	toBeExecuted.add(commandExecuted); // I know this looks weird but this is necessary, will fix later
 	toBeExecuted.remove(commandExecuted);
 
+	bool flag = true;
+	for(map<pair<string, int>, int >::iterator it = conditions.begin(); it != conditions.end(); ++it)
+	{
+		if(registers[(it->X).Y][(it->X).X] != it->Y)
+		{
+			flag = false;
+			break;
+		}
+	}
+
+	if(flag)
+		cout << "CONDITION SATISFIED\n";
+
 	cout << "\ntraceCount = " << ++traceCount << endl;
 	cout << endl;
 	linebreak();
@@ -676,6 +690,13 @@ int main()
 
 			program[i].pb(c);
 		}
+	}
+
+	pair<string, int> s;
+	int value;
+	while(cin >> s.first >> s.second >> value)
+	{
+		conditions[s] = value;
 	}
 
 	trace.clear();
