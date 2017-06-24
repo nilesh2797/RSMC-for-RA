@@ -15,8 +15,6 @@ using namespace std;
 
 #define NOPRINT 0
 
-// map<int,vector<bool> > variable_initialised;
-
 void linebreak()
 {
 	rep(i, 0, 100)
@@ -268,12 +266,8 @@ std::vector<ii> listAllRf(const evnt &e)
 		toReturn.pb(ii(-1,-1));
 	}
 
-	// if(variable_initialised[e.var][e.pid]==0)
-	// {
-	// 	toReturn.pb(ii(-1,-1));
-	// }
 	int var = e.var;
-	//cout << "these are possible parameters for the event : \n";
+	
 	int count = 1;
 	rep(i, 0, num_p)
 	{
