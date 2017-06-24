@@ -23,7 +23,7 @@ Format of a command :
 
 first you enter type of command('w', 'r' and 'l')
 
-'w' denotes a write command, if the type is 'w' you then enter <variable_name>(string) followed by <value>(int)
+'w' denotes a write command, if the type is 'w' you then enter <variable_name>(string) followed by <value_to_be_written>(int)
 for e.g. "w x 1"
 
 'r' denotes a read command, if the type is 'r' you then enter <variable_name>(string) followed by the <local_register_name>(string) in which you are going to store the read value.
@@ -31,7 +31,7 @@ for e.g. "r x r1"
 
 'l' denotes a local command such as "if", "jump", "+", "<" and other arithmetic/logical operations, if the type is 'l' then you enter <local_command_type>(string)[possible values : "if", "jump", "+", "-", etc].
 
-if the local command is "if" then you specify <local_register_name>(string) then <value>(int) then <if_true_then_goto>(int) then <if_false_then_goto>(int)
+if the local command is "if" then you specify <local_register_name>(string) then <value_to_compare>(int) then <if_true_then_goto>(int) then <if_false_then_goto>(int)
 for e.g. "l if r1 1 4 8" this command means if(r1 == 1) then goto 4 else goto 8
 
 if the local command is "jump", then you only need to specify the <line_number_to_jump>(int)
