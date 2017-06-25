@@ -1,8 +1,14 @@
 2
-2 2
- 
-w x 1
-w y 1
 
-r y r1
+3 3
+
+w x 1
+f
+r x r1
+
+w x 2
+f
 r x r2
+
+r1 0 2
+r2 1 1

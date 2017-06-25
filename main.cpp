@@ -8,14 +8,19 @@ using namespace std;
 #define IF 2
 #define JUMP 3
 #define LOCAL 4
+#define FENCE 5
 
 #define PO 0
 #define RF 1
 #define CO 2
 
+#define INVALID_PAIR ii(-1, -1)
+
 #define NOPRINT 0
 
 // map<int,vector<bool> > variable_initialised;
+
+ii fenceRf = INVALID_PAIR;
 
 void linebreak()
 {
