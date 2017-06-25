@@ -1,0 +1,26 @@
+4
+
+2 3 3 2 
+
+w x 1
+r y ry
+
+r x r2
+w y 1
+r y ry
+
+r y r2
+r x r1
+r y ry
+
+w y 2
+r y ry
+
+r2 1 1
+r2 2 2
+r1 2 0
+ry 0 2
+ry 1 2
+ry 2 2
+ry 3 2
+
