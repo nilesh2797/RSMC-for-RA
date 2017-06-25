@@ -9,12 +9,8 @@ r y ry
 
 w y 1
 w x 2
-r y ry
 r x rx
-<<<<<<< HEAD
-=======
-
->>>>>>> d6515ef5c531384ad481f19e2512c6c3baec1b1f
+r y ry
 
 rx 0 1
 rx 1 1
