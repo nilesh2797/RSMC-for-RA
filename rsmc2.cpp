@@ -3,6 +3,9 @@
 #include "trie.cpp"
 
 std::vector<map<string, int> > registers;
+bool halt = false;
+
+// #define TRACE
 
 struct Command
 {
@@ -101,7 +104,7 @@ std::vector<int> exec, pexec;
 int n = 0; //total number of events
 std::map<string, int> vartoi; // string to index
 std::vector<string> itos; // index to string
-std::stack<Command> readCommands, writeCommands, localCommands;
+std::stack<Command> readCommands, writeCommands, localCommands, fenceCommands;
 vnt commandExecuted; // stores the executed command
 trie toBeExecuted, executed;
 std::map<pair<string, int>, int> conditions;
@@ -120,7 +123,9 @@ void explore()
 
 			if(c.operation == "jump")
 			{
+				#ifdef TRACE
 				cout << "(" << c.pid << ", " << c.eid << ") jump " << c.trueGoto << endl;
+				#endif
 
 				int pid = c.pid, eid = exec[pid]++;
 
@@ -142,6 +147,11 @@ void explore()
 					{
 						if(c1.type == LOCAL)
 							localCommands.push(c1);
+						else
+						{
+							if(c1.type == FENCE)
+								fenceCommands.push(c1);
+						}
 					}
 				}
 
@@ -152,7 +162,9 @@ void explore()
 			}
 			if(c.operation == "if")
 			{
+				#ifdef TRACE
 				cout << "(" << c.pid << ", " << c.eid << ") if " << c.localRegister  << "(" << registers[c.pid][c.localRegister] << ") == " << c.value << endl;
+				#endif
 
 				int pid = c.pid, eid = exec[pid]++;
 
@@ -177,6 +189,11 @@ void explore()
 						{
 							if(c1.type == LOCAL)
 								localCommands.push(c1);
+							else
+							{
+								if(c1.type == FENCE)
+									fenceCommands.push(c1);
+							}
 						}
 					}
 				}
@@ -193,6 +210,11 @@ void explore()
 						{
 							if(c1.type == LOCAL)
 								localCommands.push(c1);
+							else
+							{
+								if(c1.type == FENCE)
+									fenceCommands.push(c1);
+							}
 						}
 					}
 				}
@@ -204,7 +226,9 @@ void explore()
 				continue;
 			}
 
+			#ifdef TRACE
 			cout << "(" << c.pid << ", " << c.eid << ") " << c.localRegister << " = " << c.operand1  << " " << c.operation << " " << c.operand2 << endl;
+			#endif
 
 			int pid = c.pid, eid = exec[pid]++;
 
@@ -230,6 +254,11 @@ void explore()
  					{
  						if(c1.type == LOCAL)
  							localCommands.push(c1);
+ 						else
+ 						{
+ 							if(c1.type == FENCE)
+ 								fenceCommands.push(c1);
+ 						}
  					}
  				}
  			}
@@ -241,11 +270,67 @@ void explore()
 
 		}
 
+		if(!fenceCommands.empty())
+		{
+			Command c = fenceCommands.top();
+			fenceCommands.pop();
+			#ifdef TRACE
+			cout << "(" << c.pid << ", " << c.eid << ")fence()\n";
+			#endif
+
+			int pid = c.pid, eid = exec[pid]++, var = num_var;
+
+			evnt e(num_p, num_var, FENCE, eid, pid, var);
+			e.cmd = ii(c.pid, c.eid);
+			trace[pid].pb(e);
+
+
+			if(e.eid > 0)
+				addEdge(trace[pid][e.eid-1], e, PO);
+
+			if(fenceRf != INVALID_PAIR)
+			{
+				int x = fenceRf.X, y = fenceRf.Y;
+				addEdge(trace[x][y], e, RF);
+			}
+
+			fenceRf = ii(e.pid, e.eid);
+
+			if(program[pid].size() > c.eid+1)
+ 			{
+ 				Command c1 = program[pid][c.eid+1];
+ 				if(c1.type == READ)
+ 					readCommands.push(c1);
+ 				else
+ 				{
+ 					if(c1.type == WRITE)
+ 						writeCommands.push(c1);
+ 					else
+ 					{
+ 						if(c1.type == LOCAL)
+ 							localCommands.push(c1);
+ 						else
+ 						{
+ 							if(c1.type == FENCE)
+ 								fenceCommands.push(c1);
+ 						}
+ 					}
+ 				}
+ 			}
+
+			// there might have some changes made to e, thus need to update these changes in trace also
+			trace[pid][exec[pid]-1] = e;
+			commandExecuted.pb(nodeType(c.pid, c.eid, e.eid, e.parameter.X, e.parameter.Y));
+			continue;
+		}
+
 		if(!writeCommands.empty())
 		{
 			Command c = writeCommands.top();
 			//Write event is being committed in these lines
+			#ifdef TRACE
 			cout << "(" << c.pid << ", " << c.eid << ") w " << itos[c.var] << " = " << c.operand1 << endl;
+			#endif
 
 			writeCommands.pop();
 			int pid = c.pid, eid = exec[pid]++, var = c.var;
@@ -295,7 +380,7 @@ void explore()
 					// {
 					// 	cout << "((" << possible[i].X.X << ", " << possible[i].X.Y << ")(" << possible[i].Y.X << ", " << possible[i].Y.Y << "))\n";
 					// }
-					cout << "reversed (" << e.pid << ", " << e.eid << ") and (" << cur.X << ", " << cur.Y << ")\n";
+					// cout << "reversed (" << e.pid << ", " << e.eid << ") and (" << cur.X << ", " << cur.Y << ")\n";
 				}
  			}
 
@@ -312,6 +397,11 @@ void explore()
  					{
  						if(c1.type == LOCAL)
  							localCommands.push(c1);
+ 						else
+ 						{
+ 							if(c1.type == FENCE)
+ 								fenceCommands.push(c1);
+ 						}
  					}
  				}
  			}
@@ -347,13 +437,16 @@ void explore()
 				if(y==-1)
 				{
 					e.value=operand_value(c,0);
-					rep(i, 1, param.size())
+					rep(i, 0, param.size())
 					{
 						vnt possible = commandExecuted;
 						possible.pb(nodeType(c.pid, c.eid, e.eid, param[i].X, param[i].Y));
 						toBeExecuted.add(possible);
+						// cout << "possible options = (" << param[i].X << ", " << param[i].Y << ")\n";
 					}	
+					#ifdef TRACE
 					cout << "(" << c.pid << ", " << c.eid << ") r " << itos[e.var] << " = " << e.value << "(-1, -1)" << endl;
+					#endif
 				}
 				else
 				{
@@ -367,6 +460,7 @@ void explore()
 						vnt possible = commandExecuted;
 						possible.pb(nodeType(c.pid, c.eid, e.eid, param[i].X, param[i].Y));
 						toBeExecuted.add(possible);
+						// cout << "possible options = (" << param[i].X << ", " << param[i].Y << ")\n";
 					}
 
 					rep(i, 0, num_p)
@@ -376,7 +470,9 @@ void explore()
 							addEdge(trace[i][maxw[i]], trace[x][y], CO);
 						}
 					}
+					#ifdef TRACE
 					cout << "(" << c.pid << ", " << c.eid << ") r " << itos[e.var] << " = " << e.value << "(" << trace[e.parameter.X][e.parameter.Y].cmd.X << ", " << trace[e.parameter.X][e.parameter.Y].cmd.Y << ")" << endl;
+					#endif
 				}	
 
 			}
@@ -385,7 +481,9 @@ void explore()
 				e.parameter.X = -1;
 				e.parameter.Y = -1;
 				e.value=operand_value(c,0);
+				#ifdef TRACE
 				cout << "(" << c.pid << ", " << c.eid << ") r " << itos[e.var] << " = " << e.value << "(-1, -1)" << endl;
+				#endif
 			}
 
 			
@@ -405,6 +503,11 @@ void explore()
  					{
  						if(c1.type == LOCAL)
  							localCommands.push(c1);
+ 						else
+ 						{
+ 							if(c1.type == FENCE)
+ 								fenceCommands.push(c1);
+ 						}
  					}
  				}
  			}
@@ -424,6 +527,7 @@ void explore()
 	bool flag = true;
 	for(map<pair<string, int>, int >::iterator it = conditions.begin(); it != conditions.end(); ++it)
 	{
+		// cout << (it->X).X << " = " << registers[(it->X).Y][(it->X).X] << " cmp " << it->Y;
 		if(registers[(it->X).Y][(it->X).X] != it->Y)
 		{
 			flag = false;
@@ -431,13 +535,29 @@ void explore()
 		}
 	}
 
-	if(flag)
-		cout << "CONDITION SATISFIED\n";
+	++traceCount;
 
-	cout << "\ntraceCount = " << ++traceCount << endl;
-	cout << endl;
+	if(flag)
+	{
+		cout << "\nCONDITION SATISFIED\n";
+		halt = true;
+	}
+
+	#ifdef TRACE
+	cout << "\ntraceCount = " << traceCount << endl;
 	linebreak();
 	cout << endl;
+	// rep(i, 0, trace.size())
+	// {
+	// 	rep(j, 0, trace[i].size())
+	// 	{
+	// 		update(trace[i][j]);
+	// 		trace[i][j].print();
+	// 		linebreak();
+	// 	}
+	// }
+	cout << endl;
+	#endif
 }
 
 void traverse(vnt toBeTraversed)
@@ -452,7 +572,9 @@ void traverse(vnt toBeTraversed)
 		{
 			if(c.operation == "jump")
 			{
+				#ifdef TRACE
 				cout << "(" << c.pid << ", " << c.eid << ") jump " << c.trueGoto << endl;
+				#endif
 
 				int pid = c.pid, eid = exec[pid]++;
 
@@ -470,7 +592,9 @@ void traverse(vnt toBeTraversed)
 			}
 			if(c.operation == "if")
 			{
+				#ifdef TRACE
 				cout << "(" << c.pid << ", " << c.eid << ") if " << c.localRegister  << "(" << registers[c.pid][c.localRegister] << ") == " << c.value << endl;
+				#endif
 
 				int pid = c.pid, eid = exec[pid]++;
 
@@ -488,7 +612,9 @@ void traverse(vnt toBeTraversed)
 				continue;
 			}
 
+			#ifdef TRACE
 			cout << "(" << c.pid << ", " << c.eid << ") " << c.localRegister << " = " << c.operand1  << " " << c.operation << " " << c.operand2 << endl;
+			#endif
 
 			int pid = c.pid, eid = exec[pid]++;
 
@@ -507,9 +633,41 @@ void traverse(vnt toBeTraversed)
 			continue;
 		}
 
+		if(c.type == FENCE)
+		{
+			#ifdef TRACE
+			cout << "(" << c.pid << ", " << c.eid << ")fence()\n";
+			#endif
+
+			int pid = c.pid, eid = exec[pid]++, var = num_var;
+
+			evnt e(num_p, num_var, FENCE, eid, pid, var);
+			e.cmd = ii(c.pid, c.eid);
+			trace[pid].pb(e);
+
+
+			if(e.eid > 0)
+				addEdge(trace[pid][e.eid-1], e, PO);
+
+			if(fenceRf != INVALID_PAIR)
+			{
+				int x = fenceRf.X, y = fenceRf.Y;
+				addEdge(trace[x][y], e, RF);
+			}
+
+			fenceRf = ii(e.pid, e.eid);
+
+			// there might have some changes made to e, thus need to update these changes in trace also
+			trace[pid][exec[pid]-1] = e;
+			commandExecuted.pb(nodeType(c.pid, c.eid, e.eid, e.parameter.X, e.parameter.Y));
+			continue;
+		}
+
 		if(c.type == WRITE)
 		{
+			#ifdef TRACE
 			cout << "(" << c.pid << ", " << c.eid << ") w " << itos[c.var] << " = " << c.operand1 << endl;
+			#endif
 
 			int pid = c.pid, eid = exec[pid]++, var = c.var;
 
@@ -561,12 +719,16 @@ void traverse(vnt toBeTraversed)
 						addEdge(trace[i][maxw[i]], trace[x][y], CO);
 					}
 				}
+				#ifdef TRACE
 				cout << "(" << c.pid << ", " << c.eid << ") r " << itos[e.var] << " = " << e.value << "(" << trace[x][y].cmd.X << ", " << trace[x][y].cmd.Y << ")" << endl;
+				#endif
 			}
 			else
 			{
 				e.value=operand_value(c,0);
+				#ifdef TRACE
 				cout << "(" << c.pid << ", " << c.eid << ") r " << itos[e.var] << " = " << e.value << "(-1, -1)" <<endl;
+				#endif
 			}
 
 			
@@ -685,12 +847,22 @@ int main()
 							}
 						}
 					}
+					else
+					{
+						if(ch == 'f' or ch == 'F')
+						{
+							c.type = FENCE;
+						}
+					}
 				}
 			}
 
 			program[i].pb(c);
 		}
 	}
+	string fence_var = "fence";
+	vartoi[fence_var] = ++num_var;
+	itos.pb(fence_var);
 
 	pair<string, int> s;
 	int value;
@@ -723,6 +895,7 @@ int main()
 	readCommands = stack<Command>();
 	writeCommands = stack<Command>();
 	localCommands = stack<Command>();
+	fenceCommands = stack<Command>();
 	commandExecuted.clear();
 
 	rep(i, 0, num_p)
@@ -737,6 +910,11 @@ int main()
 			{
 				if(program[i][0].type == LOCAL)
 					localCommands.push(program[i][0]);
+				else
+				{
+					if(program[i][0].type == FENCE)
+						fenceCommands.push(program[i][0]);
+				}
 			}
 		}
 	}
@@ -746,7 +924,12 @@ int main()
 
 	while(!toBeExecuted.empty())
 	{
+		if(halt)
+		{
+			break;
+		}
 		// clear out things
+		fenceRf = INVALID_PAIR;
 		trace.clear();
 		trace.resize(num_p);
 		pexec.clear();
@@ -773,6 +956,7 @@ int main()
 		readCommands = stack<Command>();
 		writeCommands = stack<Command>();
 		localCommands = stack<Command>();
+		fenceCommands = stack<Command>();
 		commandExecuted.clear();
 
 		vnt toBeTraversed = toBeExecuted.getRun();
@@ -798,6 +982,11 @@ int main()
 					{
 						if(program[i][pexec[i]+1].type == LOCAL)
 							localCommands.push(program[i][pexec[i]+1]);
+						else
+						{
+							if(program[i][pexec[i]+1].type == FENCE)
+								fenceCommands.push(program[i][pexec[i]+1]);
+						}
 					}
 				}
 			}
@@ -807,4 +996,5 @@ int main()
 		// if(traceCount > 500)
 		// 	break;
 	}
+	cout << "traceCount = " << traceCount << endl;
 }
