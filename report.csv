@@ -1,4 +1,4 @@
-name, execution time(stopped when condition satisfied), no. of traces, conditions satisfied
+Name, Execution time(stopped when condition satisfied), No. of traces, Conditions satisfied(YES/NO)
 2+2W.rsmc, 0.000, 1, YES
 3.2W.rsmc, 0.624, 399, YES
 3.LB.rsmc, 0.004, 11, NO

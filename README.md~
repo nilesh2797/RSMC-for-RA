@@ -7,7 +7,7 @@ into account the effect of both the hardware architectures and compiler optimiza
 rsmc2.cpp is the main file which implements the RSMC algorithm for RA model. to compile it simply execute g++ -std=c++11 rsmc2.cpp and then run ./a.out < in, where 'in' is the input file
 You will observe all the traces printed out on the screen, with the different values assigned to the registers.
 
-if you want to see just the result whether the given conditions are consistent with RA semantics or not, you can uncomment the line number 8, '#define TRACE' .
+if you want to see just the result whether the given conditions are consistent with RA semantics or not, you can run the file rsmc_noprint.cpp instead.
 
 main.cpp contains the implementation of our idea that we have suggested to maintain the coherence order and happens before order via vector clocks
 

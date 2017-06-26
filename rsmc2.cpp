@@ -5,7 +5,7 @@
 std::vector<map<string, int> > registers;
 bool halt = false;
 
-// #define TRACE
+#define TRACE
 
 struct Command
 {
@@ -744,8 +744,9 @@ void traverse(vnt toBeTraversed)
 	}
 }
 
-int main()
+int main(int argc, char* argv[])
 {
+
 	itos.pb("dummy");
 	cin >> num_p;
 
