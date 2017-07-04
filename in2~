@@ -1,35 +1,12 @@
 2
 
-<<<<<<< HEAD
-3 3
+4 1
 
-w x 1
-f
+r x r1
+r x r1
+r x r1
+w x 2
+
 r x r1
 
-w x 2
-f
-r x r2
-
-r1 0 2
-r2 1 1
-=======
-5 5
- 
-w x 1
-w y 2
-w z1 1
-r z2 r1
-r x r2
-
-w y 1
-w x 2
-w z2 1
-r z1 r1
-r y r2
-
-r1 0 1
-r2 0 1
-r1 1 1
-r2 1 1
->>>>>>> d6515ef5c531384ad481f19e2512c6c3baec1b1f
+r1 1 2
