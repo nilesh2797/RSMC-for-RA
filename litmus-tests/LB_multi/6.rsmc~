@@ -1,0 +1,27 @@
+6
+
+2 2 2 2 2 2
+
+r x r1
+w y 1
+
+r y r1
+w z 1
+
+r z r1
+w t 1
+
+r t r1
+w q 1
+
+r q r1
+w s 1
+
+r s r1
+w x 1
+
+r1 0 1
+r1 1 1
+r1 2 1
+r1 3 1
+r1 4 1

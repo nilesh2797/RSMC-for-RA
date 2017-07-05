@@ -28,5 +28,5 @@ l if r2 0 10 10
 w y 0
 r y ry
 
-rx 0 0
+rx 0 10
 ry 1 0
